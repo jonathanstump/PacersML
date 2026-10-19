@@ -26,7 +26,7 @@ def ev(rows):
     out = []
     for seq, r in enumerate(rows):
         base = {"game_id": GAME, "seq": seq, "period": 1, "elapsed": 0.0, "team_id": 0, "person_id": 0,
-                "etype": "other", "made": False, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
+                "etype": "other", "made": False, "value": 0, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
                 "technical": False, "in_id": 0, "out_id": 0, "desc": ""}
         base.update(r)
         out.append(base)
@@ -36,16 +36,16 @@ def ev(rows):
 def game_rows(with_sub=True):
     rows = [
         dict(etype="period_start"),
-        dict(elapsed=10, team_id=HOME, person_id=11, etype="fg", made=True, points=2),
-        dict(elapsed=30, team_id=AWAY, person_id=21, etype="fg"),
+        dict(elapsed=10, team_id=HOME, person_id=11, etype="fg", value=2, made=True, points=2),
+        dict(elapsed=30, team_id=AWAY, person_id=21, etype="fg", value=2),
         dict(elapsed=31, team_id=HOME, person_id=12, etype="rebound"),
-        dict(elapsed=45, team_id=HOME, person_id=13, etype="fg", made=True, points=3),
+        dict(elapsed=45, team_id=HOME, person_id=13, etype="fg", value=3, made=True, points=3),
         dict(elapsed=60, team_id=HOME, person_id=14, etype="foul"),
-        dict(elapsed=60, team_id=AWAY, person_id=22, etype="ft", made=True, points=1, ft_num=1, ft_of=2),
+        dict(elapsed=60, team_id=AWAY, person_id=22, etype="ft", value=1, made=True, points=1, ft_num=1, ft_of=2),
         dict(elapsed=60, team_id=HOME, etype="sub", in_id=16, out_id=14),
-        dict(elapsed=60, team_id=AWAY, person_id=22, etype="ft", made=True, points=1, ft_num=2, ft_of=2),
+        dict(elapsed=60, team_id=AWAY, person_id=22, etype="ft", value=1, made=True, points=1, ft_num=2, ft_of=2),
         dict(elapsed=80, team_id=HOME, person_id=11, etype="turnover"),
-        dict(elapsed=90, team_id=AWAY, person_id=23, etype="fg", made=True, points=2),
+        dict(elapsed=90, team_id=AWAY, person_id=23, etype="fg", value=2, made=True, points=2),
         dict(elapsed=720, etype="period_end"),
     ]
     if not with_sub:

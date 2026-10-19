@@ -2,8 +2,9 @@
 
 Canonical play-by-play event (one row per action, in source order):
     game_id, seq, period, elapsed (seconds since tip-off), team_id, person_id,
-    etype, made, points, ft_num, ft_of, technical, in_id, out_id, desc
+    etype, made, value, points, ft_num, ft_of, technical, in_id, out_id, desc
 etype ∈ {period_start, period_end, fg, ft, rebound, turnover, foul, sub, jumpball, other}.
+`value` is the shot value (2/3 for field goals, 1 for free throws) whether or not it went in.
 For etype == "sub", in_id / out_id are the players entering / leaving (person_id is unused).
 
 Canonical player box (one row per player who appeared):
@@ -26,7 +27,7 @@ BOX_KEYS = {
     "oreb": "reboundsOffensive", "dreb": "reboundsDefensive", "ast": "assists", "stl": "steals",
     "blk": "blocks", "tov": "turnovers", "pf": "foulsPersonal", "plus_minus": "plusMinusPoints",
 }
-EVENT_COLS = ["game_id", "seq", "period", "elapsed", "team_id", "person_id", "etype", "made", "points",
+EVENT_COLS = ["game_id", "seq", "period", "elapsed", "team_id", "person_id", "etype", "made", "value", "points",
               "ft_num", "ft_of", "technical", "in_id", "out_id", "desc"]
 
 
@@ -94,7 +95,7 @@ def _base(game_id: str, seq: int, a: dict) -> dict:
     period = int(a["period"])
     return {"game_id": game_id, "seq": seq, "period": period, "elapsed": elapsed(period, a.get("clock", "")),
             "team_id": int(a.get("teamId") or 0), "person_id": int(a.get("personId") or 0),
-            "etype": "other", "made": False, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
+            "etype": "other", "made": False, "value": 0, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
             "technical": False, "in_id": 0, "out_id": 0, "desc": a.get("description", "")}
 
 
@@ -108,10 +109,11 @@ def events_live(payload: dict, game_id: str) -> pd.DataFrame:
         if at == "period":
             r["etype"] = "period_start" if st == "start" else "period_end"
         elif at in ("2pt", "3pt"):
-            r.update(etype="fg", made=made, points=(2 if at == "2pt" else 3) * made)
+            value = 2 if at == "2pt" else 3
+            r.update(etype="fg", made=made, value=value, points=value * made)
         elif at == "freethrow":
             n, of = _ft_parts(st)
-            r.update(etype="ft", made=made, points=int(made), ft_num=n, ft_of=of,
+            r.update(etype="ft", made=made, value=1, points=int(made), ft_num=n, ft_of=of,
                      technical="technical" in st or "technical" in r["desc"].lower())
         elif at == "substitution":
             r.update(etype="sub", in_id=r["person_id"] if st == "in" else 0,
@@ -138,11 +140,13 @@ def events_v3(payload: dict, game_id: str, box_df: pd.DataFrame) -> pd.DataFrame
             r["etype"] = "period_start" if st.lower() == "start" else "period_end"
         elif at in ("Made Shot", "Missed Shot"):
             made = at == "Made Shot"
-            r.update(etype="fg", made=made, points=int(a.get("shotValue") or 0) * made)
+            value = int(a.get("shotValue") or (3 if "3PT" in r["desc"].upper() else 2))
+            r.update(etype="fg", made=made, value=value, points=value * made)
         elif at == "Free Throw":
             made = a.get("shotResult") == "Made" or ("MISS" not in r["desc"].upper() and not a.get("shotResult"))
             n, of = _ft_parts(st)
-            r.update(etype="ft", made=made, points=int(made), ft_num=n, ft_of=of, technical="technical" in st.lower())
+            r.update(etype="ft", made=made, value=1, points=int(made), ft_num=n, ft_of=of,
+                     technical="technical" in st.lower())
         elif at == "Substitution":
             r["etype"] = "sub"
             m = _SUB_RE.search(r["desc"])

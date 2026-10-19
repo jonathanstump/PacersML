@@ -25,21 +25,39 @@ def control_team(ev: pd.DataFrame) -> pd.Series:
 
 
 def assign_possessions(ev: pd.DataFrame) -> pd.DataFrame:
-    """Add `poss_id` (game-wide counter, -1 before the first control event of a period) and `offense`."""
+    """Add `poss_id` (game-wide counter, -1 before the first control event of a period), `offense`, and the
+    rebound bookkeeping needed for rebound percentages later:
+        live_miss   missed field goal, or missed last free throw of a trip (the ball is live afterwards)
+        reb_live    rebound that follows a live miss (excludes dead-ball team rebounds between free throws)
+        reb_off     reb_live and the rebounding team is the team that missed
+    """
     ev = ev.sort_values("seq").reset_index(drop=True)
     ctrl = control_team(ev).to_numpy()
     periods = ev.period.to_numpy()
+    live_miss = (((ev.etype == "fg") & ~ev.made)
+                 | ((ev.etype == "ft") & ~ev.made & ~ev.technical & (ev.ft_num == ev.ft_of))).to_numpy()
+    is_reb = (ev.etype == "rebound").to_numpy()
+    is_shot = ev.etype.isin(["fg", "ft"]).to_numpy() & ~ev.technical.to_numpy()
+    team = ev.team_id.to_numpy()
     poss_id = np.full(len(ev), -1)
     offense = np.zeros(len(ev), dtype="int64")
-    cur_team, cur_id, cur_period = 0, -1, None
+    reb_live = np.zeros(len(ev), dtype=bool)
+    reb_off = np.zeros(len(ev), dtype=bool)
+    cur_team, cur_id, cur_period, last_shot = 0, -1, None, None
     for i in range(len(ev)):
         if periods[i] != cur_period:
-            cur_period, cur_team = periods[i], 0
+            cur_period, cur_team, last_shot = periods[i], 0, None
+        if is_reb[i] and last_shot is not None and live_miss[last_shot]:
+            reb_live[i] = True
+            reb_off[i] = team[i] == team[last_shot]
+            last_shot = None
+        if is_shot[i]:
+            last_shot = i
         if ctrl[i] and ctrl[i] != cur_team:
             cur_team, cur_id = ctrl[i], cur_id + 1
         if cur_team:
             poss_id[i], offense[i] = cur_id, cur_team
-    return ev.assign(poss_id=poss_id, offense=offense)
+    return ev.assign(poss_id=poss_id, offense=offense, live_miss=live_miss, reb_live=reb_live, reb_off=reb_off)
 
 
 def possession_table(ev: pd.DataFrame) -> pd.DataFrame:

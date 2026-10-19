@@ -43,3 +43,9 @@ def test_player_seconds_and_plus_minus():
     assert tot.loc[14, "seconds"] == 60 and tot.loc[14, "pm"] == 4
     assert tot.loc[16, "seconds"] == 660 and tot.loc[16, "pm"] == -3
     assert tot.loc[21, "pm"] == -1
+
+
+def test_rebound_ingredients_recorded_per_stint():
+    stints, _, _ = from_rotation(game_rows(), rotation(), HOME, AWAY, GAME)
+    s0 = stints.iloc[0]
+    assert (s0.away_fg_miss, s0.home_dreb, s0.home_oreb) == (1, 1, 0)

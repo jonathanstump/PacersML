@@ -7,7 +7,8 @@ Two builders produce the same output:
 
 Output of either builder (via `build`):
     stints:  game_id, stint_id, period, start, end, seconds, home_ids, away_ids (tuples of person ids),
-             home_pts, away_pts, home_poss, away_poss, source
+             home_pts, away_pts, home_poss, away_poss, source,
+             {home,away}_{fg_miss, ft_miss_live, oreb, dreb}  (rebound-percentage ingredients)
     events:  the input events with `stint_id`, `poss_id`, `offense`
     info:    dict with inferred starters (pbp builder) for debugging failed rebuilds
 """
@@ -53,9 +54,16 @@ def _aggregate(stints, ev, home, away):
     poss = possession_table(ev)
     poss["stint_id"] = ev.set_index("seq").stint_id.reindex(poss.first_seq).to_numpy()
     pc = poss.groupby(["stint_id", "offense"]).size().unstack(fill_value=0)
+    # Raw ingredients for rebound percentages (Phase 2): live misses and rebounds after them, by team.
+    ev = ev.assign(fg_miss=(ev.etype == "fg") & ~ev.made, ft_miss_live=ev.live_miss & (ev.etype == "ft"),
+                   oreb=ev.reb_off, dreb=ev.reb_live & ~ev.reb_off)
+    extra = ev.groupby(["stint_id", "team_id"])[["fg_miss", "ft_miss_live", "oreb", "dreb"]].sum()
     for team, side in ((home, "home"), (away, "away")):
         stints[f"{side}_pts"] = stints.stint_id.map(pts[team] if team in pts else {}).fillna(0).astype(int)
         stints[f"{side}_poss"] = stints.stint_id.map(pc[team] if team in pc else {}).fillna(0).astype(int)
+        for col in extra.columns:
+            s = extra[col].xs(team, level="team_id") if team in extra.index.get_level_values(1) else {}
+            stints[f"{side}_{col}"] = stints.stint_id.map(s).fillna(0).astype(int)
     return stints
 
 

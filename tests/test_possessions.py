@@ -43,3 +43,16 @@ def test_new_period_starts_new_possession():
         dict(period=2, elapsed=730, team_id=HOME, person_id=11, etype="fg"),
     ])
     assert len(possession_table(assign_possessions(e))) == 2
+
+
+def test_dead_ball_rebound_between_free_throws_not_live():
+    e = ev([
+        dict(etype="period_start"),
+        dict(elapsed=5, team_id=HOME, person_id=11, etype="ft", value=1, ft_num=1, ft_of=2),
+        dict(elapsed=5, team_id=HOME, etype="rebound"),
+        dict(elapsed=5, team_id=HOME, person_id=11, etype="ft", value=1, ft_num=2, ft_of=2),
+        dict(elapsed=6, team_id=HOME, person_id=12, etype="rebound"),
+    ])
+    a = assign_possessions(e)
+    assert a.reb_live.tolist() == [False, False, False, False, True]
+    assert a.reb_off.tolist()[-1]
