@@ -54,3 +54,14 @@ def test_quarantine_when_rebuild_also_fails():
     q = r.quarantine
     assert q is not None and q["pacers_game"] and q["rebuild_attempted"]
     assert "plus_minus" in q["failed_checks"] and q["inferred_starters"]
+
+
+def test_player_flag_needs_both_floors_and_direction_split():
+    from pacersml.data.validate import gap_direction, player_poss_check
+    season = pd.DataFrame({"person_id": [1, 2, 3, 4], "name": list("abcd"), "games": 1,
+                           "poss_off": [21, 3070, 1000, 500], "poss_def": [21, 3070, 1000, 500]})
+    nba = pd.DataFrame({"PLAYER_ID": [1, 2, 3, 4], "POSS": [20, 3000, 1003, 501]})
+    t = player_poss_check(season, nba)
+    assert t.flag_avg.tolist() == [False, True, False, False]   # 5% but 1 poss; 2.3% and 70 poss
+    d = gap_direction(t).set_index("measure").loc["gap_poss_avg"]
+    assert (d.over, d.under, d.investigate) == (2, 2, False)

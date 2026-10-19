@@ -11,7 +11,8 @@ Per-game checks (hard = a failure sends the game to rebuild / quarantine, D3):
     poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
 Season checks:
     team-season possessions vs NBA team POSS: gap > 2% fails the season (D1)
-    player-season possessions vs NBA player POSS: gap reported with sample size (D5)
+    player-season possessions vs NBA player POSS: flagged when > 2% AND > 5 possessions, report-only (D7);
+    share of players over vs under NBA reported, outside 40/60 marked "investigate" (D7)
 """
 from __future__ import annotations
 
@@ -25,8 +26,10 @@ from pacersml.data.stints import player_stints
 
 LINEUP_CHECKS = {"minutes", "floor_five", "game_seconds", "plus_minus"}
 COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb"]
-POSS_TOL = 0.02          # D1 / D5
-QUARANTINE_ALARM = 0.01  # D3
+POSS_TOL = 0.02            # D1 / D5
+PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
+DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
+QUARANTINE_ALARM = 0.01    # D3
 
 
 def _row(game_id, check, passed, residual, detail="", hard=True):
@@ -121,14 +124,33 @@ def player_poss_check(season_tbl: pd.DataFrame, nba_player_adv: pd.DataFrame | N
     because NBA's player POSS definition isn't documented; both gaps are kept, with sample sizes."""
     t = season_tbl[["person_id", "name", "games", "poss_off", "poss_def"]].copy()
     if nba_player_adv is None or nba_player_adv.empty:
-        return t.assign(poss_nba=np.nan, gap_pct_avg=np.nan, gap_pct_off=np.nan)
+        return t.assign(poss_nba=np.nan, gap_poss_avg=np.nan, gap_pct_avg=np.nan, gap_poss_off=np.nan,
+                        gap_pct_off=np.nan, flag_avg=False, flag_off=False)
     nba = nba_player_adv.groupby("PLAYER_ID").POSS.sum().rename("poss_nba")
     t = t.merge(nba, left_on="person_id", right_index=True, how="left")
     avg = (t.poss_off + t.poss_def) / 2
-    t["gap_pct_avg"] = (avg - t.poss_nba) / t.poss_nba
-    t["gap_pct_off"] = (t.poss_off - t.poss_nba) / t.poss_nba
-    t["over_tol_avg"] = t.gap_pct_avg.abs() > POSS_TOL
+    t["gap_poss_avg"] = avg - t.poss_nba
+    t["gap_pct_avg"] = t.gap_poss_avg / t.poss_nba
+    t["gap_poss_off"] = t.poss_off - t.poss_nba
+    t["gap_pct_off"] = t.gap_poss_off / t.poss_nba
+    # D7: report-only flag, needs both the relative and the absolute gap
+    t["flag_avg"] = (t.gap_pct_avg.abs() > POSS_TOL) & (t.gap_poss_avg.abs() > PLAYER_POSS_FLOOR)
+    t["flag_off"] = (t.gap_pct_off.abs() > POSS_TOL) & (t.gap_poss_off.abs() > PLAYER_POSS_FLOOR)
     return t
+
+
+def gap_direction(player_tbl: pd.DataFrame) -> pd.DataFrame:
+    """Share of player-seasons where our count is over vs under NBA's (exact matches counted separately).
+    Gaps from definitional differences should split roughly evenly; a split outside 40/60 means investigate (D7)."""
+    rows = []
+    for col in ("gap_poss_avg", "gap_poss_off"):
+        g = player_tbl[col].dropna() if col in player_tbl else pd.Series(dtype=float)
+        over, under, equal = int((g > 0).sum()), int((g < 0).sum()), int((g == 0).sum())
+        share_over = over / (over + under) if over + under else np.nan
+        rows.append({"measure": col, "over": over, "under": under, "equal": equal, "share_over": share_over,
+                     "investigate": bool(pd.notna(share_over)
+                                         and not DIRECTION_BAND[0] <= share_over <= DIRECTION_BAND[1])})
+    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------- plots
@@ -191,11 +213,14 @@ def plot_season(season: str, checks: pd.DataFrame, team_tbl: pd.DataFrame, playe
 
     if "gap_pct_avg" in player_tbl and player_tbl.gap_pct_avg.notna().any():
         t = player_tbl.dropna(subset=["gap_pct_avg"])
-        fig, ax = _ax(f"{season}: player-season possessions, ours (off+def)/2 vs NBA (n = {len(t)} players)",
-                      "NBA possessions (player-season, log scale)", "gap %")
-        ax.scatter(t.poss_nba, t.gap_pct_avg * 100, s=10, color=SERIES, alpha=0.6, linewidths=0)
+        d = gap_direction(t).set_index("measure").loc["gap_poss_avg"]
+        fig, ax = _ax(f"{season}: player-season possessions, ours (off+def)/2 vs NBA (n = {len(t)} players)\n"
+                      f"over {d.over} / under {d.under} / equal {d.equal} · flagged (>2% and >5 poss) "
+                      f"{int(t.flag_avg.sum())}", "NBA possessions (player-season, log scale)",
+                      "gap, possessions (ours - NBA)")
+        ax.scatter(t.poss_nba, t.gap_poss_avg, s=10, color=SERIES, alpha=0.6, linewidths=0)
         ax.set_xscale("log")
-        for y in (-2, 2):
+        for y in (-PLAYER_POSS_FLOOR, PLAYER_POSS_FLOOR):
             ax.axhline(y, color=MUTED, linestyle="--", linewidth=1)
         p = out_dir / f"{season}_player_poss_gap.png"
         fig.savefig(p, dpi=130, bbox_inches="tight")

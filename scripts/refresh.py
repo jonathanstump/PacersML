@@ -26,8 +26,8 @@ from pacersml.data.http import Client, EndpointBlocked  # noqa: E402
 from pacersml.data.per100 import season_per100  # noqa: E402
 from pacersml.data.pipeline import PACERS, UNAVAILABLE, game_list, load_game, process_game  # noqa: E402
 from pacersml.data.sources import stats_nba  # noqa: E402
-from pacersml.data.validate import (QUARANTINE_ALARM, plot_season, player_poss_check,  # noqa: E402
-                                    team_poss_check)
+from pacersml.data.validate import (QUARANTINE_ALARM, gap_direction, plot_season,  # noqa: E402
+                                    player_poss_check, team_poss_check)
 
 SEASONS = ["2024-25", "2025-26", "2026-27"]
 TRAINING_SEASONS = {"2024-25", "2025-26"}  # frozen after first complete, clean pull
@@ -97,6 +97,12 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
                   f"{int(tt.over_tol.sum())} team(s) — treated as a parser bug (D1)")
     team_tbl = pd.concat(team_tbls, ignore_index=True)
     player_tbl = pd.concat(player_tbls, ignore_index=True)
+    direction = pd.concat([gap_direction(t).assign(season_type=t.season_type.iloc[0])
+                           for t in player_tbls if not t.empty], ignore_index=True)
+    for r in direction[direction.share_over.notna()].itertuples():
+        print(f"  player poss gaps {r.season_type} {r.measure}: over {r.over} / under {r.under} / equal {r.equal}"
+              f" (share over {r.share_over:.0%}){'  -> outside 40/60, investigate (D7)' if r.investigate else ''}")
+    n_flag = int(player_tbl.get("flag_avg", pd.Series(dtype=bool)).fillna(False).sum())
 
     rate = len(q_ids) / len(results)
     if rate > QUARANTINE_ALARM:
@@ -106,6 +112,8 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     n_rebuilt = int(checks[checks.method == "pbp_rebuild"].game_id.nunique())
     summary = {"games": int(len(games)), "processed": len(results), "blocked": len(blocked),
                "quarantined": len(q_ids), "quarantine_rate": round(rate, 4), "pbp_rebuild_used": n_rebuilt,
+               "player_poss_flagged": n_flag,
+               "player_gap_direction": json.loads(direction.to_json(orient="records")),
                "stints": int(len(clean_stints)), "exit_code": code,
                "nba_reference": {st: {k: v is not None for k, v in r.items()} for st, r in ref_tables.items()}}
     status["seasons"][season] = summary
@@ -122,6 +130,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     checks.to_parquet(out / "validation.parquet", index=False)
     quarantine.to_parquet(out / "quarantine.parquet", index=False)
     plot_season(season, checks, team_tbl, player_tbl, ROOT / "reports" / "validation")
+    direction.to_csv(ROOT / "reports" / "validation" / f"{season}_player_poss_gap_direction.csv", index=False)
     if args.no_write or code in (2, 4):
         print("  processed outputs NOT written" + (" (--no-write)" if args.no_write else f" (exit {code})"))
         return code

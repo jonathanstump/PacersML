@@ -122,3 +122,28 @@ Full table with reasoning in docs/METHODS.md ("Per-100 computation"). Proposed d
   inconsistent across sources), charges drawn (hustle-stats endpoint, not pulled).
 
 **Jonathan's choice:** _pending_
+
+---
+
+## D7 — Player-season possession flag and gap direction (2026-10-19, Phase 1)
+
+**Decision:**
+- **Player-season flag:** gap vs NBA player POSS above **2% and** above **5 possessions** (absolute). Report-only;
+  never stops a run.
+- **Team-season gap above 2%** is treated as a bug (unchanged from D1; refresh exits 4).
+- **Direction of player gaps:** the report shows the share of player-seasons where our count is over vs under
+  NBA's. A split outside roughly **40/60** means investigate (reported, not a run stop).
+
+**Options considered:** (a) a minimum possession count before flagging, (b) an absolute possession floor on the
+flag, (c) report only with no flag.
+
+**Reasoning:** The gap is not sampling noise: we count the same games NBA does. It comes from definitional
+differences (crediting a possession across a mid-trip substitution, at period ends, around technical FTs), each
+of which moves a player's count by a possession or two over a season. So the threshold belongs in possessions:
+a 20-possession player off by 1 (5%) is harmless; a 3,000-possession player off by 60 (2%) is worth a look. A
+minimum count would hide low-minute players, including real bugs that only affect them. The player check doesn't
+need to stop runs because two other checks catch real bugs better: the team-season check (sub-boundary
+attribution evens out at team level, so a gap there means something is broken) and the direction of player gaps
+(definitional gaps should split about evenly; a lopsided split points to a systematic bug such as possessions
+dropped at period ends, even when every individual gap is small). Low-possession players never reach the
+analysis anyway, since the Phase 2 archetype model applies a minutes cutoff.

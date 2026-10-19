@@ -161,7 +161,9 @@ the rebuild was tried, Pacers flag, inferred starters).
 Season-level:
 - more than **1%** of a season's games quarantined → refresh exits with code 2, processed tables not overwritten (D3);
 - team-season possessions vs NBA team POSS, gap **> 2%** → exit code 4 (D1);
-- player-season possessions vs NBA player POSS: gap reported as (off+def)/2 and as off-only, with sample size (D5).
+- player-season possessions vs NBA player POSS, as (off+def)/2 and off-only: flagged when the gap is > 2% **and**
+  > 5 possessions; report-only (D7);
+- direction of player gaps: share of player-seasons over vs under NBA; outside 40/60 is marked "investigate" (D7).
 
 Plots and pass-rate tables per season go to `reports/validation/`.
 
@@ -178,7 +180,8 @@ Plots and pass-rate tables per season go to `reports/validation/`.
   `pbp_counts` / `team_points` failures that no rebuild can fix.
 - Plus-minus passing doesn't prove the lineups are right: two errors could cancel within one player's minutes.
   Minutes and plus-minus together make that unlikely, but not impossible.
-- NBA's player POSS definition isn't documented; the player-season gap may be partly definitional.
+- NBA's player POSS definition isn't documented. Player gaps are definitional (same games, no sampling), so
+  individual gaps of a possession or two are expected; a lopsided over/under split is the signal to look for.
 - The pbpstats comparison is reported, not enforced; pbpstats uses its own possession rules.
 
 **Questions you should be able to answer.**
