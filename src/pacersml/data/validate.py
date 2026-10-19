@@ -1,0 +1,209 @@
+"""Stint-vs-box validation (per game) and possession cross-checks (per season), plus diagnostic plots.
+
+Per-game checks (hard = a failure sends the game to rebuild / quarantine, D3):
+    minutes       player seconds on the floor from stints vs box MIN, |diff| <= 1 s            hard, lineup
+    floor_five    every stint has exactly 5 players per team                                hard, lineup
+    game_seconds  sum of stint seconds == 2880 + 300 * OT periods (± 1 s)                   hard, lineup
+    plus_minus    player (pts for - pts against) over his stints == box +/-                  hard, lineup
+    team_points   PBP points per team == box points per team                                hard
+    pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb)
+                  == box score, exactly (D5)                                                  hard
+    poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
+Season checks:
+    team-season possessions vs NBA team POSS: gap > 2% fails the season (D1)
+    player-season possessions vs NBA player POSS: gap reported with sample size (D5)
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from pacersml.data.normalize import period_length, period_start
+from pacersml.data.stints import player_stints
+
+LINEUP_CHECKS = {"minutes", "floor_five", "game_seconds", "plus_minus"}
+COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb"]
+POSS_TOL = 0.02          # D1 / D5
+QUARANTINE_ALARM = 0.01  # D3
+
+
+def _row(game_id, check, passed, residual, detail="", hard=True):
+    return {"game_id": game_id, "check": check, "hard": hard, "passed": bool(passed),
+            "residual": float(residual), "detail": detail}
+
+
+def pbp_player_counts(ev: pd.DataFrame) -> pd.DataFrame:
+    e = ev[ev.person_id > 0]
+    fg, ft = e[e.etype == "fg"], e[e.etype == "ft"]
+    parts = {
+        "pts": e.groupby("person_id").points.sum(),
+        "fgm": fg[fg.made].groupby("person_id").size(), "fga": fg.groupby("person_id").size(),
+        "fg3m": fg[fg.made & (fg.value == 3)].groupby("person_id").size(),
+        "fg3a": fg[fg.value == 3].groupby("person_id").size(),
+        "ftm": ft[ft.made].groupby("person_id").size(), "fta": ft.groupby("person_id").size(),
+        "tov": e[e.etype == "turnover"].groupby("person_id").size(),
+        "reb": e[e.etype == "rebound"].groupby("person_id").size(),
+    }
+    return pd.DataFrame(parts).fillna(0).astype(int)
+
+
+def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None) -> pd.DataFrame:
+    gid = box_df.game_id.iloc[0]
+    rows = []
+    ps = player_stints(stints, home, away)
+    on = ps.assign(pm=ps.pts_for - ps.pts_against).groupby("person_id")[["seconds", "pm"]].sum()
+    b = box_df.set_index("person_id")
+
+    diff = (on.seconds.reindex(b.index, fill_value=0) - b.seconds)
+    extra = on.index.difference(b.index)  # on the floor per stints but not in the box at all
+    resid = max(diff.abs().max(), on.seconds.reindex(extra).max() if len(extra) else 0)
+    worst = diff.abs().sort_values(ascending=False).head(3)
+    rows.append(_row(gid, "minutes", resid <= 1.0, resid, ";".join(f"{p}:{d:+.1f}" for p, d in diff[worst.index].items())))
+
+    bad = ((stints.home_ids.map(len) != 5) | (stints.away_ids.map(len) != 5)).sum()
+    rows.append(_row(gid, "floor_five", bad == 0, bad, f"{bad} of {len(stints)} stints"))
+
+    n_per = int(ev.period.max())
+    length = period_start(n_per) + period_length(n_per)
+    rows.append(_row(gid, "game_seconds", abs(stints.seconds.sum() - length) <= 1.0, stints.seconds.sum() - length))
+
+    pm = on.pm.reindex(b.index, fill_value=0) - b.plus_minus
+    rows.append(_row(gid, "plus_minus", (pm == 0).all(), pm.abs().max(),
+                     ";".join(f"{p}:{d:+d}" for p, d in pm[pm != 0].astype(int).items())[:200]))
+
+    team_pbp = ev.groupby("team_id").points.sum()
+    team_box = box_df.groupby("team_id").pts.sum()
+    tdiff = (team_pbp.reindex(team_box.index, fill_value=0) - team_box)
+    rows.append(_row(gid, "team_points", (tdiff == 0).all(), tdiff.abs().max()))
+
+    cnt = pbp_player_counts(ev).reindex(b.index, fill_value=0)
+    boxc = b.assign(reb=b.oreb + b.dreb)[COUNT_STATS]
+    cd = (cnt[COUNT_STATS] - boxc)
+    off = [f"{s}:{int(cd[s].abs().sum())}" for s in COUNT_STATS if cd[s].abs().sum()]
+    rows.append(_row(gid, "pbp_counts", not off, cd.abs().to_numpy().max(), ";".join(off)))
+
+    if pbpstats_poss:
+        ours = {home: stints.home_poss.sum(), away: stints.away_poss.sum()}
+        r = max(abs(ours[t] - pbpstats_poss[t]) for t in (home, away) if t in pbpstats_poss)
+        rows.append(_row(gid, "poss_pbpstats", True, r, f"ours={ours} pbpstats={pbpstats_poss}", hard=False))
+    return pd.DataFrame(rows)
+
+
+def hard_failures(checks: pd.DataFrame) -> set[str]:
+    return set(checks[checks.hard & ~checks.passed].check)
+
+
+# ---------------------------------------------------------------- season-level
+
+def team_poss_check(stints_all: pd.DataFrame, games: pd.DataFrame, nba_team_adv: pd.DataFrame | None):
+    """Team-season possessions, ours vs NBA's. Returns (table, failed) where failed = any gap > 2%."""
+    s = stints_all.merge(games[["game_id", "home_team_id", "away_team_id"]], on="game_id")
+    ours = pd.concat([
+        s.groupby("home_team_id").home_poss.sum().rename_axis("team_id"),
+        s.groupby("away_team_id").away_poss.sum().rename_axis("team_id"),
+    ]).groupby(level=0).sum().rename("poss_ours")
+    gp = pd.concat([games.home_team_id, games.away_team_id]).value_counts().rename("games")
+    t = pd.concat([ours, gp], axis=1).rename_axis("team_id").reset_index()
+    if nba_team_adv is None or nba_team_adv.empty:
+        t["poss_nba"], t["gap_pct"], t["over_tol"] = np.nan, np.nan, False
+        return t, False
+    nba = nba_team_adv.set_index("TEAM_ID").POSS.rename("poss_nba")
+    t = t.merge(nba, left_on="team_id", right_index=True, how="left")
+    t["gap_pct"] = (t.poss_ours - t.poss_nba) / t.poss_nba
+    t["over_tol"] = t.gap_pct.abs() > POSS_TOL
+    return t, bool(t.over_tol.any())
+
+
+def player_poss_check(season_tbl: pd.DataFrame, nba_player_adv: pd.DataFrame | None) -> pd.DataFrame:
+    """Player-season possessions vs NBA player POSS. Ours is reported as (off + def) / 2 and as off only,
+    because NBA's player POSS definition isn't documented; both gaps are kept, with sample sizes."""
+    t = season_tbl[["person_id", "name", "games", "poss_off", "poss_def"]].copy()
+    if nba_player_adv is None or nba_player_adv.empty:
+        return t.assign(poss_nba=np.nan, gap_pct_avg=np.nan, gap_pct_off=np.nan)
+    nba = nba_player_adv.groupby("PLAYER_ID").POSS.sum().rename("poss_nba")
+    t = t.merge(nba, left_on="person_id", right_index=True, how="left")
+    avg = (t.poss_off + t.poss_def) / 2
+    t["gap_pct_avg"] = (avg - t.poss_nba) / t.poss_nba
+    t["gap_pct_off"] = (t.poss_off - t.poss_nba) / t.poss_nba
+    t["over_tol_avg"] = t.gap_pct_avg.abs() > POSS_TOL
+    return t
+
+
+# ---------------------------------------------------------------- plots
+
+INK, MUTED, GRID, SURFACE, SERIES = "#0b0b0b", "#898781", "#e1e0d9", "#fcfcfb", "#2a78d6"
+
+
+def _ax(title, xlabel, ylabel):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(7, 4), facecolor=SURFACE)
+    ax.set_facecolor(SURFACE)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(MUTED)
+    ax.tick_params(colors=MUTED, labelcolor=INK, labelsize=9)
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.set_title(title, color=INK, fontsize=11, loc="left")
+    ax.set_xlabel(xlabel, color=INK, fontsize=9)
+    ax.set_ylabel(ylabel, color=INK, fontsize=9)
+    return fig, ax
+
+
+def plot_season(season: str, checks: pd.DataFrame, team_tbl: pd.DataFrame, player_tbl: pd.DataFrame,
+                out_dir: Path) -> list[Path]:
+    import matplotlib.pyplot as plt
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+
+    for check, xlabel in (("minutes", "max |stint seconds - box seconds| per game"),
+                          ("plus_minus", "max |stint +/- - box +/-| per game")):
+        r = checks[checks.check == check].residual
+        if r.empty:
+            continue
+        fig, ax = _ax(f"{season}: {check} residual (n = {len(r)} games)", xlabel, "games")
+        ax.hist(r, bins=40, color=SERIES, edgecolor=SURFACE, linewidth=2)
+        if check == "minutes":
+            ax.axvline(1.0, color=MUTED, linestyle="--", linewidth=1)
+            ax.text(1.0, ax.get_ylim()[1] * 0.95, " tolerance 1 s", color=MUTED, fontsize=8, va="top")
+        p = out_dir / f"{season}_{check}_residual.png"
+        fig.savefig(p, dpi=130, bbox_inches="tight")
+        plt.close(fig)
+        paths.append(p)
+
+    if team_tbl.gap_pct.notna().any():
+        t = team_tbl.dropna(subset=["gap_pct"]).sort_values("gap_pct")
+        fig, ax = _ax(f"{season}: team-season possessions, ours vs NBA (n = {len(t)} teams)",
+                      "team id", "gap (ours - NBA) / NBA, %")
+        ax.bar(range(len(t)), t.gap_pct * 100, color=SERIES, edgecolor=SURFACE, linewidth=2)
+        for y in (-2, 2):
+            ax.axhline(y, color=MUTED, linestyle="--", linewidth=1)
+        ax.set_xticks(range(len(t)), t.team_id.astype(str).str[-2:], fontsize=7)
+        p = out_dir / f"{season}_team_poss_gap.png"
+        fig.savefig(p, dpi=130, bbox_inches="tight")
+        plt.close(fig)
+        paths.append(p)
+
+    if "gap_pct_avg" in player_tbl and player_tbl.gap_pct_avg.notna().any():
+        t = player_tbl.dropna(subset=["gap_pct_avg"])
+        fig, ax = _ax(f"{season}: player-season possessions, ours (off+def)/2 vs NBA (n = {len(t)} players)",
+                      "NBA possessions (player-season, log scale)", "gap %")
+        ax.scatter(t.poss_nba, t.gap_pct_avg * 100, s=10, color=SERIES, alpha=0.6, linewidths=0)
+        ax.set_xscale("log")
+        for y in (-2, 2):
+            ax.axhline(y, color=MUTED, linestyle="--", linewidth=1)
+        p = out_dir / f"{season}_player_poss_gap.png"
+        fig.savefig(p, dpi=130, bbox_inches="tight")
+        plt.close(fig)
+        paths.append(p)
+
+    rates = (checks.groupby("check").passed.agg(["sum", "count"])
+             .assign(pass_rate=lambda d: d["sum"] / d["count"]))
+    rates.to_csv(out_dir / f"{season}_check_pass_rates.csv")
+    paths.append(out_dir / f"{season}_check_pass_rates.csv")
+    return paths

@@ -57,10 +57,12 @@ def rotation(c: Client, game_id: str) -> pd.DataFrame:
     })
 
 
-def dash_player_per100(c: Client, season: str, season_type: str) -> pd.DataFrame:
+def dash_players(c: Client, season: str, season_type: str, measure: str, per_mode: str) -> pd.DataFrame:
+    """measure 'Base' + per_mode 'Per100Possessions' is NBA's per-100 (stored for reference, D1);
+    measure 'Advanced' + per_mode 'Totals' carries player POSS for the D5 possession cross-check."""
     p = c.stats("leaguedashplayerstats", {**_DASH_PARAMS, "Season": season,
                                           "SeasonType": SEASON_TYPES[season_type],
-                                          "PerMode": "Per100Possessions", "MeasureType": "Base"})
+                                          "PerMode": per_mode, "MeasureType": measure})
     return _result_set(p)
 
 

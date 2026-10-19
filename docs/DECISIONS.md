@@ -85,3 +85,40 @@ request with timeouts counted as blocked, status code and latency recorded.
 
 **Outcome:** _pending — fill in with date after the 3 probe runs. Re-run the probe if hosted pulls start
 failing later in the season._
+
+---
+
+## D5 — Per-100 denominator and how it is cross-checked (2026-10-19, Phase 1)
+
+**Decision:** Split denominators. Offensive stats are per 100 *offensive* possessions the player was on the
+floor for; defensive stats per 100 *defensive* possessions. The stat-to-side mapping is D6.
+
+**Options considered:** (a) split off/def, (b) every stat per 100 of (off + def) / 2 (closest to NBA's own
+Per100), (c) every stat per 100 offensive possessions.
+
+**Reasoning:** Each stat is measured against the chances it had to happen (a steal can only happen on
+defense). It is the cleaner input for archetypes, which are meant to separate what a player does with the ball
+from what he does without it. The difference from (b) is usually under 1–2%, so this is about correctness, not
+shifting results.
+
+**Cross-check the pieces, not the rates.** Per-100 rates are *not* compared with NBA's Per100. Instead:
+- Counting stats per player-game must match the box score exactly; any gap is a parsing bug.
+- Possessions per player-season are compared with NBA's player POSS, tolerance 2% (same number as D1).
+If both pieces check out, the rates built from them are right whatever the denominator, and a count error
+can't hide behind a possession error that cancels it.
+
+**Phase 2 note:** rebounds should become rebound percentages (share of available rebounds), not per-100.
+Stints already record missed FGs, missed last FTs, and offensive/defensive rebounds after live misses for this.
+
+---
+
+## D6 — Stat-to-side mapping (2026-10-19, Phase 1) — PROPOSED, pending Jonathan's review
+
+Full table with reasoning in docs/METHODS.md ("Per-100 computation"). Proposed default as implemented in
+`src/pacersml/data/per100.py` (`SIDE`):
+- Offensive: PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, AST, TOV, OREB
+- Defensive: STL, BLK, DREB, PF
+- Not used in Phase 1: fouls drawn (in cdn liveData box, not in stats.nba.com box v3, so it would be
+  inconsistent across sources), charges drawn (hustle-stats endpoint, not pulled).
+
+**Jonathan's choice:** _pending_
