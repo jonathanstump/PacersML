@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# Cached data is rebuilt by scripts/refresh.py; only the manifest is tracked.
+data/*
+!data/manifest.json

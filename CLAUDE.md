@@ -28,3 +28,8 @@
 
 - Python (pandas, scikit-learn), data cached as parquet in data/.
 - Website: static site built from JSON exports, redeployed weekly.
+
+## Commits
+
+- Include the Phase Number in each commit along with the description
+- Commit often but where it makes sense
