@@ -1,0 +1,23 @@
+name: Access probe
+
+# Manual trigger only: Actions tab -> "Access probe" -> Run workflow.
+# Run it 3 times a few hours apart; each run uploads its JSON as an artifact
+# and prints a results table in the run summary.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python scripts/probe_endpoints.py --label github-actions
+      - uses: actions/upload-artifact@v4
+        with:
+          name: access-probe-${{ github.run_id }}
+          path: reports/access_probe/*.json
