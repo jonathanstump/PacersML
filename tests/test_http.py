@@ -22,7 +22,7 @@ class FakeResponse:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(http.time, "sleep", lambda s: None)
-    c = Client(min_interval=0, retries=3, disable_after=2)
+    c = Client(min_interval=0, retries=3, cooldown_after=2, cooldown_s=600)
     return c
 
 
@@ -34,10 +34,14 @@ def test_server_error_retries_then_falls_back_without_blocking_host(client, monk
     assert len(calls) == 3 and "stats.nba.com" not in client.blocked_hosts
     with pytest.raises(EndpointError):
         client.stats("gamerotation", {})
-    assert "stats/gamerotation" in client.disabled_endpoints      # 2 failed calls in a row
+    assert "stats/gamerotation" in client.cooling_until            # 2 failed calls in a row
     with pytest.raises(EndpointError):
         client.stats("gamerotation", {})
-    assert len(calls) == 6                                          # disabled: no further requests
+    assert len(calls) == 6                                          # cooling down: no further requests
+    client.cooling_until["stats/gamerotation"] = 0                  # cooldown over: tried again
+    with pytest.raises(EndpointError):
+        client.stats("gamerotation", {})
+    assert len(calls) == 9
 
 
 def test_retry_recovers_and_resets_streak(client, monkeypatch):
@@ -46,7 +50,7 @@ def test_retry_recovers_and_resets_streak(client, monkeypatch):
     assert client.stats("gamerotation", {}) == {"ok": True}
     with pytest.raises(EndpointError):
         client.stats("gamerotation", {})
-    assert "stats/gamerotation" not in client.disabled_endpoints   # streak restarted after the success
+    assert "stats/gamerotation" not in client.cooling_until         # streak restarted after the success
 
 
 def test_refusal_blocks_host(client, monkeypatch):

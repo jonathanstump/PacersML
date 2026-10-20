@@ -267,3 +267,43 @@ campus. On GitHub the block is on the network: v2 changed nothing there (AS8075 
   liveData play-by-play fails. A refresh never runs on partial data.
 - **Pull at a polite rate:** 1.5–2.0 s between requests. The backfill is a one-time job and runs slowly overnight;
   firing three seasons as fast as possible is how a working fingerprint gets banned.
+
+---
+
+## D11 — Stints built hybrid: rotation starters, play-by-play substitutions (2026-10-20, Phase 1)
+
+**What happened:** the first full backfill (2026-10-20 04:38–04:59 UTC) processed 298 games of 2024-25 and
+quarantined 297; nothing was written or frozen (the 1% alarm worked). Two causes, found offline from the cache:
+- **The rotation file's substitution timing glitches.** Test game 0022400064 (ATL–BKN): pure rotation timing put
+  **6 players on the floor for the last 2 seconds** of the game, failing minutes and floor-five, so the game fell
+  back to the rebuild.
+- **The rebuild's starter inference fails.** In the same game it missed a player in period 3: minutes off by 477 s,
+  plus-minus by 8. gamerotation also fails intermittently per game (e.g. 0022400061: 200 at 03:45, 500 at 05:00),
+  and in the backfill 296 of 298 games ended up on the weak rebuild.
+
+**Options considered:** (1) hybrid primary; (2) pure rotation, then hybrid, then rebuild; (3) keep as designed.
+
+**Decision:**
+- **Stints are built hybrid:** the rotation file gives each period's starting five; play-by-play gives every
+  substitution after that. Each source is used for what it gets right.
+- **Pure play-by-play rebuild only when rotation data is missing** (or doesn't give exactly five starters per team
+  in every period).
+- **Quarantine if validation still fails.** No second attempt with the other builder: two paths, as in the original
+  design. Option 3 would trip the 1% alarm; option 2 adds a third path to keep track of.
+- **Exactly five per team at every moment**, enforced by the hard `floor_five` check on every stint, whichever path
+  built it. A glitch like the 6-player stint can never pass silently.
+- **The rotation file's timing is kept as a comparison.** At every substitution, the hybrid's time is compared with
+  the rotation file's (gap > 2 s counted). Rotation changes with no matching PBP sub usually mean a substitution
+  missing from the play-by-play, the hybrid's one weak spot. Counts go in the quarantine rows, the run summary,
+  `data/processed/{season}/sub_timing.parquet` and the site's quarantine export. Report-only.
+- **`stint_method` column** (`hybrid` / `pbp_rebuild`) on every stint.
+
+**Rationale:** the rotation file's substitution timing glitches (the 6-player stint above), and the rebuild's
+starter inference fails; the hybrid avoids both whenever rotation data exists. Offline re-run of the cached games
+0022400062, 0022400064 and 0022500005: all clean on the hybrid, 0 timing disagreements on 42–72 subs per game.
+
+**Also fixed (engineering):** a short failure patch (~game 250; both hosts at once, NBA answered normally a minute
+later) had marked both hosts down for the rest of the run, cascading into ~2,300 "blocked" games. Now a host that
+fails a whole call triggers a 5-minute pause and a re-probe (up to 3 times), then the run stops cleanly. Rotation
+500s get a longer backoff, a 10-minute cooldown instead of a run-long switch-off, and a second pass at the end of
+each season.

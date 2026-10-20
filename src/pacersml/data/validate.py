@@ -1,6 +1,6 @@
 """Stint-vs-box validation (per game) and possession cross-checks (per season), plus diagnostic plots.
 
-Per-game checks (hard = a failure sends the game to rebuild / quarantine, D3):
+Per-game checks (hard = a failure quarantines the game, D3/D11):
     minutes       player seconds on the floor from stints vs box MIN, |diff| <= 1 s            hard, lineup
     floor_five    every stint has exactly 5 players per team                                hard, lineup
     game_seconds  sum of stint seconds == 2880 + 300 * OT periods (± 1 s)                   hard, lineup
@@ -24,7 +24,6 @@ import pandas as pd
 from pacersml.data.normalize import period_length, period_start
 from pacersml.data.stints import player_stints
 
-LINEUP_CHECKS = {"minutes", "floor_five", "game_seconds", "plus_minus"}
 COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb", "pf"]
 POSS_TOL = 0.02            # D1 / D5
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions

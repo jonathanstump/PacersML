@@ -52,7 +52,8 @@ def pbp_v3(c: Client, game_id: str) -> dict:
 
 
 def rotation(c: Client, game_id: str) -> dict:
-    return c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"})
+    # fails intermittently per game (500): longer backoff, 5 s then 10 s, before giving up on this call
+    return c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"}, backoff=5.0)
 
 
 def rotation_frame(payload: dict, game_id: str) -> pd.DataFrame:

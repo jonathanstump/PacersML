@@ -52,17 +52,24 @@ Also recorded for later rebound percentages: `live_miss` (missed FG or missed *l
 
 ## 2. Stint construction (Phase 1) — `src/pacersml/data/stints.py`
 
-**What it does.** A stint is a stretch of game time with the same ten players on the floor. Two builders:
+**What it does.** A stint is a stretch of game time with the same ten players on the floor. Two builders
+(D11); `stint_method` on every stint records which one ran:
 
-- **Rotation builder (primary).** stats.nba.com `gamerotation` gives, for every player, each stretch he was on
-  the floor (in/out time, to the tenth of a second). That decides *who* is on the floor. When an event happens
-  in the same second as a substitution (e.g. FT 1, sub, FT 2), the play-by-play order decides which side of the
-  substitution it falls on.
-  If `gamerotation` keeps failing for a game (3 tries with backoff), that game falls back to the rebuild (D10).
-- **PBP rebuild (fallback, D3).** Uses only the play-by-play: each period's starting five is inferred, then
+- **Hybrid (primary).** stats.nba.com `gamerotation` gives each period's starting five (who is on the floor at the
+  period start); every play-by-play substitution after that swaps one player. Used when the rotation file gives
+  exactly five starters per team in every period. gamerotation fails intermittently per game, so it is retried
+  with backoff and again in a second pass at the end of the season run.
+- **PBP rebuild (fallback, only when rotation data is missing).** Each period's starting five is inferred, then
   every substitution swaps one player. Starters are inferred as: anyone whose first appearance in the period
   is anything other than being subbed in; if fewer than 5, fill from the previous period's closing five; if still
   short, fill from the rest of the roster by box-score minutes (never anyone subbed in during that period).
+
+If the checks still fail, the game is quarantined; the other builder is not tried.
+
+**Rotation timing as a comparison (report-only).** For every substitution, the PBP time is compared with the
+rotation file's in/out time for the same player: PBP subs with no rotation change within 2 s (`pbp_subs_off`) and
+rotation changes with no PBP sub within 2 s (`rotation_unmatched`, usually a sub missing from the play-by-play).
+Changes at period boundaries are lineup resets and are skipped.
 
 **Free-throw crediting (D8)**, applied after either builder:
 
@@ -92,16 +99,20 @@ Player 15 never appears in an event and is filled in by the rebuild from box-sco
 
 **What could make it wrong.**
 - **Starter inference (rebuild only)** is the weak point: a player who plays an entire quarter without a
-  recorded event is invisible to the PBP. If a rebuild fails, check the `inferred_starters` column in the
-  quarantine table first.
-- Rotation and PBP clocks disagree by more than the 0.5 s tolerance → an event lands on the wrong side of a sub.
+  recorded event is invisible to the PBP. If a rebuilt game fails, check the `starters` column in the quarantine
+  table first.
+- **A substitution missing from the play-by-play** breaks the hybrid from that point in the period (minutes and
+  plus-minus fail). The `rotation_unmatched` count usually flags it before the minutes check does.
+- The rotation file itself can be wrong at a substitution (0022400064: 6 players for the last 2 s). The hybrid only
+  uses it for period starters, which is why it was chosen (D11).
 - stats.nba.com v3 substitutions are one row ("SUB: Zubac FOR Turner"); the player without an id is matched by
   family name against that team's box score. Two players with the same family name on one team → unresolved.
 - Both PBP normalizers have been run on one real game (0022500005) with every check passing; a full season is the
   real test. liveData is the primary PBP source (it records who drew each foul); v3 is the fallback.
 
 **Questions you should be able to answer.**
-1. Why does the rotation builder still need the play-by-play at all?
+1. Which part of a stint does the hybrid take from the rotation file, which part from the play-by-play, and why
+   that split?
 2. In the toy example the sub is logged between NYK's free throws. Why do both count against the lineup with
    player 14, and what would happen to the plus-minus check if FT 2 went to the lineup with player 16?
 3. A rebuild fails on minutes for one player by exactly 12:00. What is the most likely cause?
@@ -174,10 +185,9 @@ C has no offensive possessions, so offensive rates are NaN rather than 0.
 | pbp_counts | PBP-derived PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, TOV, REB, PF per player = box exactly | yes |
 | poss_pbpstats | team possessions vs pbpstats.com | reported only |
 
-If a *lineup* check fails on the rotation builder, the game is rebuilt from PBP and re-checked. If any hard
-check still fails, the game is quarantined: kept out of processed tables, listed in
-`data/processed/quarantine.parquet` and `site_export/quarantine.json` (game, checks failed, residuals, whether
-the rebuild was tried, Pacers flag, inferred starters).
+If any hard check fails, the game is quarantined (no second builder is tried, D11): kept out of processed tables, listed in
+`data/processed/quarantine.parquet` and `site_export/quarantine.json` (game, checks failed, residuals,
+`stint_method`, whether rotation data existed, the two sub-timing counts, Pacers flag, period starters).
 
 Season-level:
 - more than **1%** of a season's games quarantined → refresh exits with code 2, processed tables not overwritten (D3);

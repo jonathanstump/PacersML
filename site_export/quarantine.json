@@ -1,5 +1,29 @@
 {
-  "generated_utc": "2026-10-20T04:37:24+00:00",
-  "rotation_unavailable_games": {},
-  "games": []
+  "generated_utc": "2026-10-20T05:12:19+00:00",
+  "rotation_unavailable_games": {
+    "2024-25": 1
+  },
+  "sub_timing_disagreements": {
+    "2024-25": {
+      "games_with_unmatched": 0,
+      "rotation_unmatched": 0,
+      "pbp_subs_off": 0
+    }
+  },
+  "games": [
+    {
+      "game_id": "0022400061",
+      "season": "2024-25",
+      "season_type": "regular",
+      "failed_checks": "floor_five,minutes,plus_minus",
+      "residuals": "minutes=1075;floor_five=7;plus_minus=6",
+      "stint_method": "pbp_rebuild",
+      "rebuild_attempted": true,
+      "rotation_available": false,
+      "rotation_unmatched": null,
+      "pbp_subs_off": null,
+      "pacers_game": false,
+      "starters": "{'P1:1610612738': {'starters': [201143, 201950, 1627759, 1628369, 1628401], 'method': 'events'}, 'P1:1610612752': {'starters': [1626157, 1628384, 1628404, 1628969, 1628973], 'method': 'events'}, 'P2:1610612738': {'starters': [201950, 1628369, 1628436, 1630202, 1630573], 'method': 'events'}, 'P2:1610612752': {'starters': [1626157, 1626166, 1628384, 1628969, 1630540], 'method': 'events'}, 'P3:1610612738': {'starters': [201143, 201950, 1627759, 1628369, 1628401], 'method': 'events'}, 'P3:1610612752': {'starters': [1626157, 1628384, 1628404, 1628969, 1628973], 'method': 'events'}, 'P4:1610612738': {'starters': [201950, 1628369, 1628436, 1630202, 1630573], 'method': 'events'}, 'P4:1610612752': {'starters': [1626166, 1628384, 1628969, 1630540, 1630579], 'method': 'events'}}"
+    }
+  ]
 }

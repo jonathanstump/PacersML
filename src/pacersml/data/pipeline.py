@@ -1,4 +1,4 @@
-"""Per-game fetch (with source fallback and caching) and processing (stints → validation → rebuild → quarantine)."""
+"""Per-game fetch (with source fallback and caching) and processing (stints → validation → quarantine, D11)."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,8 +9,8 @@ from pacersml.data import cache, normalize
 from pacersml.data.http import Client, EndpointBlocked, EndpointError
 from pacersml.data.per100 import player_game
 from pacersml.data.sources import cdn_nba, pbpstats, stats_nba
-from pacersml.data.stints import from_pbp, from_rotation, player_stints
-from pacersml.data.validate import LINEUP_CHECKS, check_game, hard_failures
+from pacersml.data.stints import compare_sub_timing, from_hybrid, from_pbp, player_stints, usable_rotation
+from pacersml.data.validate import check_game, hard_failures
 
 PACERS = 1610612754
 SEASON_TYPE_BY_PREFIX = {"002": "regular", "004": "playoffs", "005": "play_in"}
@@ -114,49 +114,52 @@ class GameResult:
     player_game: pd.DataFrame
     checks: pd.DataFrame
     quarantine: dict | None
-    rebuild_info: dict
+    starters_info: dict
+    sub_timing: dict
 
 
 def process_game(g: pd.Series, data: GameData) -> GameResult:
+    """Hybrid stints when the rotation file gives five starters per team in every period, otherwise the pure
+    PBP rebuild; quarantine if any hard check fails (D11). No second attempt with the other builder."""
     gid, home, away = g.game_id, int(g.home_team_id), int(g.away_team_id)
     pb = {}
     if pd.notna(g.get("pbpstats_home_poss")):
         pb = {int(g.pbpstats_home_id): int(g.pbpstats_home_poss), int(g.pbpstats_away_id): int(g.pbpstats_away_poss)}
 
-    rebuild_attempted, info, first_fail = False, {}, set()
-    if data.rotation is not None and not data.rotation.empty:
-        stints, ev, info = from_rotation(data.events, data.rotation, home, away, gid)
-        checks = check_game(stints, ev, data.box, home, away, pb).assign(method="rotation")
-        first_fail = hard_failures(checks)
-        if first_fail & LINEUP_CHECKS:
-            rebuild_attempted = True
-            s2, ev2, info = from_pbp(data.events, data.box, home, away, gid)
-            c2 = check_game(s2, ev2, data.box, home, away, pb).assign(method="pbp_rebuild")
-            checks = pd.concat([checks, c2], ignore_index=True)
-            stints, ev = s2, ev2
-            final = c2
-        else:
-            final = checks
+    periods = sorted(data.events.period.unique())
+    rotation_ok = usable_rotation(data.rotation, periods, home, away)
+    if rotation_ok:
+        stints, ev, info = from_hybrid(data.events, data.rotation, home, away, gid)
     else:
         stints, ev, info = from_pbp(data.events, data.box, home, away, gid)
-        final = checks = check_game(stints, ev, data.box, home, away, pb).assign(method="pbp_rebuild")
+    method = stints.stint_method.iloc[0]
+    checks = check_game(stints, ev, data.box, home, away, pb).assign(method=method)
 
-    failed = hard_failures(final)
+    timing = {"pbp_subs": None, "pbp_subs_off": None, "rotation_changes": None, "rotation_unmatched": None,
+              "rotation_unmatched_detail": ""}
+    if data.rotation is not None and not data.rotation.empty:
+        timing = compare_sub_timing(ev, data.rotation)
+    timing = {"game_id": gid, "season": g.season, "season_type": g.season_type, "stint_method": method,
+              "rotation_available": data.rotation is not None and not data.rotation.empty,
+              "rotation_usable": rotation_ok, **timing}
+
+    failed = hard_failures(checks)
     q = None
     if failed:
-        worst = final[final.check.isin(failed)]
+        worst = checks[checks.check.isin(failed)]
         q = {"game_id": gid, "season": g.season, "season_type": g.season_type,
              "failed_checks": ",".join(sorted(failed)),
              "residuals": ";".join(f"{r.check}={r.residual:g}" for r in worst.itertuples()),
-             "first_method": "rotation" if data.rotation is not None else "pbp_rebuild",
-             "first_failed": ",".join(sorted(first_fail)),
-             "rebuild_attempted": rebuild_attempted,
-             "rebuild_result": ("failed" if rebuild_attempted else "not_attempted"),
+             "stint_method": method,
+             "rebuild_attempted": method == "pbp_rebuild",
+             "rotation_available": timing["rotation_available"],
+             "rotation_unmatched": timing["rotation_unmatched"],
+             "pbp_subs_off": timing["pbp_subs_off"],
              "pacers_game": PACERS in (home, away),
-             "inferred_starters": str({f"P{p}:{t}": v for (p, t), v in info.items()}) if info else ""}
+             "starters": str({f"P{p}:{t}": v for (p, t), v in info.items()}) if info else ""}
 
     stints = stints.assign(season=g.season, season_type=g.season_type)
     pg = player_game(data.box, player_stints(stints, home, away), ev).assign(season=g.season,
                                                                               season_type=g.season_type)
     checks = checks.assign(season=g.season, season_type=g.season_type)
-    return GameResult(stints, pg, checks, q, info)
+    return GameResult(stints, pg, checks, q, info, timing)

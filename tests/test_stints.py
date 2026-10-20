@@ -1,7 +1,8 @@
 import pytest
 from toy import AWAY, GAME, HOME, box, ev, game_rows, rotation
 
-from pacersml.data.stints import from_pbp, from_rotation, infer_starters, player_stints
+from pacersml.data.stints import (compare_sub_timing, from_hybrid, from_pbp, infer_starters, player_stints,
+                                   usable_rotation)
 
 EXPECTED = {
     "home_ids": [(11, 12, 13, 14, 15), (11, 12, 13, 15, 16)],
@@ -14,20 +15,43 @@ EXPECTED = {
 }
 
 
-@pytest.mark.parametrize("builder", ["rotation", "pbp"])
+@pytest.mark.parametrize("builder", ["hybrid", "pbp"])
 def test_toy_stints(builder):
-    if builder == "rotation":
-        stints, _, _ = from_rotation(game_rows(), rotation(), HOME, AWAY, GAME)
+    if builder == "hybrid":
+        stints, _, _ = from_hybrid(game_rows(), rotation(), HOME, AWAY, GAME)
     else:
         stints, _, _ = from_pbp(game_rows(), box(), HOME, AWAY, GAME)
     for col, want in EXPECTED.items():
         assert stints[col].tolist() == want, col
 
 
-def test_rotation_change_without_pbp_sub_still_splits_at_rotation_time():
-    stints, _, _ = from_rotation(game_rows(with_sub=False), rotation(), HOME, AWAY, GAME)
-    assert stints.seconds.tolist() == [60.0, 660.0]
-    assert stints.away_pts.tolist() == [2, 2]   # both FTs precede the next event after t=60
+def test_stint_method_recorded():
+    assert set(from_hybrid(game_rows(), rotation(), HOME, AWAY, GAME)[0].stint_method) == {"hybrid"}
+    assert set(from_pbp(game_rows(), box(), HOME, AWAY, GAME)[0].stint_method) == {"pbp_rebuild"}
+
+
+def test_rotation_with_six_starters_is_not_usable():
+    rot = rotation()
+    rot.loc[rot.person_id == 16, "in_sec"] = 0          # rotation file has 16 on the floor from tip-off too
+    assert usable_rotation(rotation(), [1], HOME, AWAY)
+    assert not usable_rotation(rot, [1], HOME, AWAY)
+
+
+def test_sub_timing_agrees_when_pbp_and_rotation_match():
+    t = compare_sub_timing(game_rows(), rotation())
+    assert (t["pbp_subs"], t["pbp_subs_off"], t["rotation_changes"], t["rotation_unmatched"]) == (1, 0, 2, 0)
+
+
+def test_sub_missing_from_pbp_shows_as_unmatched_rotation_change():
+    t = compare_sub_timing(game_rows(with_sub=False), rotation())
+    assert (t["pbp_subs"], t["rotation_unmatched"]) == (0, 2)       # 14 out @60, 16 in @60
+
+
+def test_sub_logged_far_from_rotation_time_is_counted():
+    ev = game_rows()
+    ev.loc[ev.etype == "sub", "elapsed"] = 70                        # PBP says 70 s, rotation says 60 s
+    t = compare_sub_timing(ev, rotation())
+    assert (t["pbp_subs_off"], t["rotation_unmatched"]) == (1, 2)
 
 
 def test_silent_starter_filled_from_minutes():
@@ -37,7 +61,7 @@ def test_silent_starter_filled_from_minutes():
 
 
 def test_player_seconds_and_plus_minus():
-    stints, _, _ = from_rotation(game_rows(), rotation(), HOME, AWAY, GAME)
+    stints, _, _ = from_hybrid(game_rows(), rotation(), HOME, AWAY, GAME)
     ps = player_stints(stints, HOME, AWAY)
     tot = ps.assign(pm=ps.pts_for - ps.pts_against).groupby("person_id")[["seconds", "pm"]].sum()
     assert tot.loc[14, "seconds"] == 60 and tot.loc[14, "pm"] == 3
@@ -46,7 +70,7 @@ def test_player_seconds_and_plus_minus():
 
 
 def test_rebound_ingredients_recorded_per_stint():
-    stints, _, _ = from_rotation(game_rows(), rotation(), HOME, AWAY, GAME)
+    stints, _, _ = from_hybrid(game_rows(), rotation(), HOME, AWAY, GAME)
     s0 = stints.iloc[0]
     assert (s0.away_fg_miss, s0.home_dreb, s0.home_oreb) == (1, 1, 0)
 

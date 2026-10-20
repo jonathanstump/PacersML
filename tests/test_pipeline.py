@@ -24,36 +24,41 @@ def game(home=HOME):
                       "season": "1999-00", "season_type": "regular"})
 
 
-def test_clean_game_passes_on_rotation():
+def test_clean_game_passes_on_hybrid():
     r = process_game(game(), GameData(full_box(), game_rows(), rotation()))
     assert r.quarantine is None
-    assert set(r.checks.method) == {"rotation"} and r.checks.passed.all()
+    assert set(r.checks.method) == {"hybrid"} and r.checks.passed.all()
+    assert r.sub_timing["rotation_usable"] and r.sub_timing["rotation_unmatched"] == 0
     pg = r.player_game.set_index("person_id")
     assert pg.loc[14, "poss_off"] == 2 and pg.loc[16, "poss_def"] == 1
 
 
-def test_bad_rotation_recovered_by_pbp_rebuild():
+def test_unusable_rotation_falls_back_to_rebuild():
     rot = rotation()
-    rot.loc[rot.person_id == 14, "out_sec"] = 100   # rotation says the sub happened at 100 s
-    rot.loc[rot.person_id == 16, "in_sec"] = 100
+    rot.loc[rot.person_id == 16, "in_sec"] = 0                       # six starters in the rotation file
     r = process_game(game(), GameData(full_box(), game_rows(), rot))
-    assert r.quarantine is None
-    assert set(r.checks.method) == {"rotation", "pbp_rebuild"}
-    assert r.checks[r.checks.method == "pbp_rebuild"].passed.all()
+    assert r.quarantine is None and set(r.checks.method) == {"pbp_rebuild"}
+    assert r.sub_timing["rotation_available"] and not r.sub_timing["rotation_usable"]
 
 
-def test_quarantine_when_rebuild_also_fails():
-    rot = rotation()
-    rot.loc[rot.person_id == 14, "out_sec"] = 100
-    rot.loc[rot.person_id == 16, "in_sec"] = 100
+def test_no_rotation_uses_rebuild():
+    r = process_game(game(), GameData(full_box(), game_rows(), None))
+    assert r.quarantine is None and set(r.checks.method) == {"pbp_rebuild"}
+    assert r.sub_timing["rotation_unmatched"] is None
+
+
+def test_quarantine_when_hybrid_fails_no_second_builder():
     ev = game_rows()
-    ev.loc[ev.etype == "sub", ["in_id", "out_id"]] = [16, 13]   # PBP names the wrong player leaving
+    ev.loc[ev.etype == "sub", ["in_id", "out_id"]] = [16, 13]       # PBP names the wrong player leaving
     r = process_game(game(home=PACERS), GameData(full_box().replace({"team_id": {HOME: PACERS}}),
                                                  ev.replace({"team_id": {HOME: PACERS}}),
-                                                 rot.replace({"team_id": {HOME: PACERS}})))
+                                                 rotation().replace({"team_id": {HOME: PACERS}})))
     q = r.quarantine
-    assert q is not None and q["pacers_game"] and q["rebuild_attempted"]
-    assert "plus_minus" in q["failed_checks"] and q["inferred_starters"]
+    assert q is not None and q["pacers_game"] and q["stint_method"] == "hybrid" and not q["rebuild_attempted"]
+    assert "plus_minus" in q["failed_checks"] and q["starters"]
+    # rotation says 14 left at 60 s (no PBP match); PBP says 13 left (no rotation match); 16 in agrees
+    assert (q["rotation_unmatched"], q["pbp_subs_off"]) == (1, 1)
+    assert set(r.checks.method) == {"hybrid"}
 
 
 def test_player_flag_needs_both_floors_and_direction_split():
