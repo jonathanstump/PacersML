@@ -64,17 +64,18 @@ def game_list(c: Client, season: str, season_types: list[str], source: str) -> t
 # ---------------------------------------------------------------- per-game fetch
 
 BOX_FETCHERS = [("stats_box", stats_nba.box_v3), ("cdn_box", cdn_nba.box_live)]
-PBP_FETCHERS = [("stats_pbp", stats_nba.pbp_v3), ("cdn_pbp", cdn_nba.pbp_live)]
+# liveData first: it is the only PBP format that records who drew each foul (D6). v3 is the fallback.
+PBP_FETCHERS = [("cdn_pbp", cdn_nba.pbp_live), ("stats_pbp", stats_nba.pbp_v3)]
 ROTATION_FETCHERS = [("stats_rotation", stats_nba.rotation)]
 
 
 def _payload(c: Client, season: str, gid: str, source: str, fetchers) -> tuple[str, dict] | None:
     """Cached raw payload if any allowed source has one, else fetch from the first allowed source that answers."""
     allowed = [(k, fn) for k, fn in fetchers if source == "auto" or k.startswith(source)]
-    hit = cache.find_raw(season, [k for k, _ in allowed], gid)
-    if hit:
-        return hit
-    for key, fn in allowed:
+    for key, fn in allowed:  # in preference order: a cached preferred source, else fetch it, else the next one
+        hit = cache.find_raw(season, [key], gid)
+        if hit:
+            return hit
         try:
             payload = fn(c, gid)
         except UNAVAILABLE:
@@ -102,7 +103,7 @@ def load_game(c: Client, season: str, gid: str, source: str) -> GameData:
     rot_hit = _payload(c, season, gid, source, ROTATION_FETCHERS)
     rot = stats_nba.rotation_frame(rot_hit[1], gid) if rot_hit else None
     srcs = {"box": box_hit[0], "events": pbp_hit[0], "rotation": rot_hit[0] if rot_hit else None}
-    return GameData(box, ev, rot, srcs)
+    return GameData(box, ev.assign(pbp_source=pbp_hit[0]), rot, srcs)
 
 
 # ---------------------------------------------------------------- per-game processing
@@ -155,6 +156,7 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
              "inferred_starters": str({f"P{p}:{t}": v for (p, t), v in info.items()}) if info else ""}
 
     stints = stints.assign(season=g.season, season_type=g.season_type)
-    pg = player_game(data.box, player_stints(stints, home, away)).assign(season=g.season, season_type=g.season_type)
+    pg = player_game(data.box, player_stints(stints, home, away), ev).assign(season=g.season,
+                                                                              season_type=g.season_type)
     checks = checks.assign(season=g.season, season_type=g.season_type)
     return GameResult(stints, pg, checks, q, info)

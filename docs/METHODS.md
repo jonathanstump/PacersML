@@ -97,8 +97,8 @@ Player 15 never appears in an event and is filled in by the rebuild from box-sco
 - Rotation and PBP clocks disagree by more than the 0.5 s tolerance → an event lands on the wrong side of a sub.
 - stats.nba.com v3 substitutions are one row ("SUB: Zubac FOR Turner"); the player without an id is matched by
   family name against that team's box score. Two players with the same family name on one team → unresolved.
-- The normalizers for both PBP sources were written against the documented formats and have **not yet been
-  run on a live response** (the development network was blocked on 2026-10-19). The first real pull tests them.
+- Both PBP normalizers have been run on one real game (0022500005) with every check passing; a full season is the
+  real test. liveData is the primary PBP source (it records who drew each foul); v3 is the fallback.
 
 **Questions you should be able to answer.**
 1. Why does the rotation builder still need the play-by-play at all?
@@ -116,19 +116,26 @@ defensive stats by defensive possessions (D5). Season tables are one row per pla
 (regular / play_in / playoffs), summed across teams for traded players, and keep `poss_off`, `poss_def`,
 `games` and `seconds` next to every rate so each number carries its sample size.
 
-**Stat-to-side mapping (D6 — proposed, for your review).**
+**Stat-to-side mapping (D6).**
 
-| stat | side | reason / caveat |
-|---|---|---|
-| PTS, FGM, FGA, 3PM, 3PA, FTM, FTA | off | can only happen with the ball |
-| AST | off | |
-| TOV | off | includes offensive fouls (which are also counted in PF) |
-| OREB | off | Phase 2: replace with OREB% (share of available offensive rebounds) |
-| STL, BLK | def | |
-| DREB | def | Phase 2: replace with DREB% |
-| PF | def | **judgment call** — mostly defensive, but offensive fouls are in here too (and in TOV) |
-| fouls drawn | — (not used) | in cdn liveData box but not in stats.nba.com box v3; using it would make features depend on which source answered |
-| charges drawn | — (not used) | hustle-stats endpoint, not pulled in Phase 1 |
+| stat | side | source | note |
+|---|---|---|---|
+| PTS, FGM, FGA, 3PM, 3PA, FTM, FTA | off | box | |
+| AST | off | box | |
+| TOV | off | box | includes offensive fouls — the only place they are counted |
+| OREB | off | box | Phase 2: replace with OREB% |
+| fouls drawn | off | PBP (liveData) | non-offensive fouls drawn while his team had the ball; rim-pressure measure (H2) |
+| non-offensive fouls committed on offense (`pf_off_other`) | off | PBP | e.g. loose-ball fouls by the team with the ball |
+| STL, BLK | def | box | |
+| DREB | def | box | Phase 2: replace with DREB% |
+| defensive PF (`pf_def`) | def | PBP | non-technical, non-offensive fouls committed while defending |
+| charges drawn | def | PBP (liveData) | offensive fouls recorded as charges, credited to the player who drew them |
+| box PF, `pf_offensive`, `off_fouls_drawn`, `pf_side_unknown` | — | box / PBP | stored, no per-100 |
+
+The side of each foul is NBA's own possession field on the liveData action. Fouls drawn and charges drawn exist
+only in liveData play-by-play; for a game that fell back to v3 they are NaN, and their per-100 rates use
+possessions from liveData games only (`poss_off_drawn`, `poss_def_drawn`). Which of these become archetype
+features is a Phase 2 decision.
 
 **Toy example.**
 
@@ -148,7 +155,7 @@ C has no offensive possessions, so offensive rates are NaN rather than 0.
 
 **Questions you should be able to answer.**
 1. Why compare counts and possessions against NBA separately, instead of comparing per-100 rates?
-2. Where does PF go and why is it debatable?
+2. Why are offensive fouls counted only in TOV, and what would happen to a charge-prone player's defensive profile if box PF were used instead?
 3. Player B has the same PTS/100 as A in half the possessions. What does that say about how much to trust each?
 
 ---
@@ -164,7 +171,7 @@ C has no offensive possessions, so offensive rates are NaN rather than 0.
 | game_seconds | total stint seconds = 2880 + 300·OT (±1 s) | yes (lineup) |
 | plus_minus | each player's stint point differential = box +/- exactly | yes (lineup) |
 | team_points | PBP points per team = box points | yes |
-| pbp_counts | PBP-derived PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, TOV, REB per player = box exactly | yes |
+| pbp_counts | PBP-derived PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, TOV, REB, PF per player = box exactly | yes |
 | poss_pbpstats | team possessions vs pbpstats.com | reported only |
 
 If a *lineup* check fails on the rotation builder, the game is rebuilt from PBP and re-checked. If any hard

@@ -1,0 +1,101 @@
+{
+  "label": "laptop-campus-v2",
+  "utc": "2026-10-20T03:45:21+00:00",
+  "network": "AS3782 Swarthmore College",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "header_set": "v2-sec-fetch",
+  "timeout_s": 15,
+  "game_id": "0022500005",
+  "results": [
+    {
+      "source": "stats.nba.com",
+      "endpoint": "leaguegamelog",
+      "status": 200,
+      "latency_s": 0.9,
+      "bytes": 391242,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "leaguedashplayerstats_per100",
+      "status": 200,
+      "latency_s": 0.35,
+      "bytes": 179842,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "gamerotation",
+      "status": 200,
+      "latency_s": 0.32,
+      "bytes": 10150,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "playbyplayv3",
+      "status": 200,
+      "latency_s": 0.35,
+      "bytes": 292147,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "boxscoretraditionalv3",
+      "status": 200,
+      "latency_s": 0.3,
+      "bytes": 17366,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "liveData_playbyplay",
+      "status": 200,
+      "latency_s": 0.34,
+      "bytes": 552585,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "liveData_boxscore",
+      "status": 200,
+      "latency_s": 0.27,
+      "bytes": 42018,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "scheduleLeagueV2",
+      "status": 200,
+      "latency_s": 0.34,
+      "bytes": 7455356,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    },
+    {
+      "source": "pbpstats.com",
+      "endpoint": "get-games",
+      "status": 200,
+      "latency_s": 9.31,
+      "bytes": 283880,
+      "json": true,
+      "result": "ok",
+      "error": ""
+    }
+  ]
+}

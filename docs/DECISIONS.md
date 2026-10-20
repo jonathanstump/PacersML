@@ -92,8 +92,9 @@ request with timeouts counted as blocked, status code and latency recorded.
 | 2026-10-20 02:47 | laptop, hotspot (AS6167) | v1 | timeout ×5 | 403 ×3 | ok |
 | 2026-10-20 03:05 | laptop, hotspot (AS6167) | v2 (sec-* headers) | ok ×4, gamerotation 500 | ok ×3 | ok |
 | 2026-10-20 03:09 | GitHub Actions (AS8075) | v2 (sec-* headers) | timeout ×5 | 403 ×3 | ok |
+| 2026-10-20 03:45 | laptop, campus (AS3782) | v2 (sec-* headers) | ok ×5 (gamerotation 200) | ok ×3 | ok |
 
-Still to measure: campus network with v2 headers; scheduled GitHub runs 2 and 3 (v2).
+Still to measure: scheduled GitHub runs 2 and 3 (v2).
 
 **Outcome:** _pending — Jonathan picks the setup after the remaining runs. Re-run the probe if hosted pulls
 start failing later in the season._
@@ -124,16 +125,35 @@ Stints already record missed FGs, missed last FTs, and offensive/defensive rebou
 
 ---
 
-## D6 — Stat-to-side mapping (2026-10-19, Phase 1) — PROPOSED, pending Jonathan's review
+## D6 — Stat-to-side mapping (2026-10-20, Phase 1)
 
-Full table with reasoning in docs/METHODS.md ("Per-100 computation"). Proposed default as implemented in
-`src/pacersml/data/per100.py` (`SIDE`):
-- Offensive: PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, AST, TOV, OREB
-- Defensive: STL, BLK, DREB, PF
-- Not used in Phase 1: fouls drawn (in cdn liveData box, not in stats.nba.com box v3, so it would be
-  inconsistent across sources), charges drawn (hustle-stats endpoint, not pulled).
+**Decision:**
+- **Offensive** (per 100 offensive possessions): PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, AST, TOV, OREB, fouls drawn.
+- **Defensive** (per 100 defensive possessions): STL, BLK, DREB, defensive PF, charges drawn.
+- **Offensive fouls are counted only in TOV**, never in PF.
+- Loose-ball and other non-offensive fouls go to whichever side the fouling player's team was on at the time.
+- Which stats enter the archetype feature set is a Phase 2 decision; all of these are computed and stored now so
+  adding one later doesn't mean re-parsing three seasons.
 
-**Jonathan's choice:** _pending_
+**Reasoning:** Box-score PF mixes defensive fouls with offensive fouls that already count in TOV, so a player who
+commits a lot of charges would look like a foul-prone defender and those plays would count twice. Splitting PF by
+side fixes both. Fouls drawn is the most direct measure of rim pressure, including non-shooting fouls that FTA
+misses (H2, Haliburton). The earlier reason for leaving it out (present in liveData, absent from stats.nba.com
+box v3) no longer applies: liveData play-by-play is now the primary PBP source and records who drew every foul.
+
+**Verified on game 0022500005** (liveData PBP): PBP personal fouls = box PF for 23/23 players; offensive fouls =
+box `foulsOffensive` 23/23; fouls drawn (incl. offensive fouls drawn) = liveData box `foulsDrawn` 23/23.
+liveData marks some offensive fouls as charges, with the drawing player (3 of 19 offensive fouls across 6 games
+checked), so charges drawn is available.
+
+**Implementation notes:**
+- The side of a foul comes from NBA's own possession field on each liveData action. Our possession tracker
+  lags right after a made basket and put 15 of 71 fouls on the wrong side in the test game.
+- Games parsed from v3 (fallback only) have no fouls-drawn data: those columns are NaN, and their per-100 rates use
+  possessions from liveData games only (`poss_off_drawn` / `poss_def_drawn`). Foul side falls back to our tracker.
+- Also stored, not mapped: offensive fouls committed (`pf_offensive`, already in TOV), all offensive fouls drawn
+  (`off_fouls_drawn`), non-offensive fouls committed on offense (`pf_off_other`, mapped to offense per the
+  loose-ball rule), fouls before either team had the ball (`pf_side_unknown`).
 
 ---
 
@@ -199,6 +219,11 @@ the network. Option 1 is the only one that keeps stints, which H1 (on/off) and H
 and cdn.nba.com answer from the hotspot (see D4 table), so the original sources are back for laptop pulls, with
 one exception: `gamerotation` returns HTTP 500 for every game tried, so **every game goes through the PBP
 rebuild**. GitHub Actions remains blocked by network. The archive / browser route is on hold, not built.
+
+**Update (2026-10-20 03:45):** on the campus network with v2 headers, `gamerotation` answers (200 for games in
+2024-25, 2025-26 and 2025-26 playoffs), so the rotation builder is back as the primary stint path there; the 500s
+were specific to the hotspot. On the test game every check passed on the rotation builder with no rebuild.
+The two adjustments below still apply to any game that ends up on the rebuild.
 
 **Adjustments that still apply because every game now uses the rebuild:**
 - Re-measure the quarantine threshold: run all of 2024-25, check the actual quarantine rate, and re-set the D3

@@ -6,7 +6,7 @@ Per-game checks (hard = a failure sends the game to rebuild / quarantine, D3):
     game_seconds  sum of stint seconds == 2880 + 300 * OT periods (± 1 s)                   hard, lineup
     plus_minus    player (pts for - pts against) over his stints == box +/-                  hard, lineup
     team_points   PBP points per team == box points per team                                hard
-    pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb)
+    pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb, pf)
                   == box score, exactly (D5)                                                  hard
     poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
 Season checks:
@@ -25,7 +25,7 @@ from pacersml.data.normalize import period_length, period_start
 from pacersml.data.stints import player_stints
 
 LINEUP_CHECKS = {"minutes", "floor_five", "game_seconds", "plus_minus"}
-COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb"]
+COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb", "pf"]
 POSS_TOL = 0.02            # D1 / D5
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
 DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
@@ -48,6 +48,7 @@ def pbp_player_counts(ev: pd.DataFrame) -> pd.DataFrame:
         "ftm": ft[ft.made].groupby("person_id").size(), "fta": ft.groupby("person_id").size(),
         "tov": e[e.etype == "turnover"].groupby("person_id").size(),
         "reb": e[e.etype == "rebound"].groupby("person_id").size(),
+        "pf": e[(e.etype == "foul") & ~e.technical].groupby("person_id").size(),  # box PF: offensive in, techs out
     }
     return pd.DataFrame(parts).fillna(0).astype(int)
 

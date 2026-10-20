@@ -5,6 +5,9 @@ Canonical play-by-play event (one row per action, in source order):
     etype, made, value, points, ft_num, ft_of, technical, in_id, out_id, desc
 etype ∈ {period_start, period_end, fg, ft, rebound, turnover, foul, sub, jumpball, other}.
 `technical` marks technical free throws and technical fouls.
+For fouls: `foul_type` (shooting, offensive, loose_ball, take, technical, ...), `drawn_id` (player who drew it;
+liveData only, 0 in v3) and `charge` (offensive foul recorded as a charge).
+`ball_team` is the team NBA records as having possession at the action (liveData only, 0 in v3).
 `value` is the shot value (2/3 for field goals, 1 for free throws) whether or not it went in.
 For etype == "sub", in_id / out_id are the players entering / leaving (person_id is unused).
 
@@ -29,7 +32,7 @@ BOX_KEYS = {
     "blk": "blocks", "tov": "turnovers", "pf": "foulsPersonal", "plus_minus": "plusMinusPoints",
 }
 EVENT_COLS = ["game_id", "seq", "period", "elapsed", "team_id", "person_id", "etype", "made", "value", "points",
-              "ft_num", "ft_of", "technical", "in_id", "out_id", "desc"]
+              "ft_num", "ft_of", "technical", "in_id", "out_id", "foul_type", "drawn_id", "charge", "ball_team", "desc"]
 
 
 def period_start(period: int) -> float:
@@ -97,7 +100,8 @@ def _base(game_id: str, seq: int, a: dict) -> dict:
     return {"game_id": game_id, "seq": seq, "period": period, "elapsed": elapsed(period, a.get("clock", "")),
             "team_id": int(a.get("teamId") or 0), "person_id": int(a.get("personId") or 0),
             "etype": "other", "made": False, "value": 0, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
-            "technical": False, "in_id": 0, "out_id": 0, "desc": a.get("description", "")}
+            "technical": False, "in_id": 0, "out_id": 0, "foul_type": "", "drawn_id": 0, "charge": False,
+            "ball_team": int(a.get("possession") or 0), "desc": a.get("description", "")}
 
 
 def events_live(payload: dict, game_id: str) -> pd.DataFrame:
@@ -123,6 +127,10 @@ def events_live(payload: dict, game_id: str) -> pd.DataFrame:
             r["etype"] = at
             if at == "foul":
                 r["technical"] = "technical" in st or "T.FOUL" in r["desc"].upper()
+                desc = (a.get("descriptor") or "").lower()
+                r["foul_type"] = "offensive" if st == "offensive" else (desc.replace(" ", "_") or st)
+                r["drawn_id"] = int(a.get("foulDrawnPersonId") or 0)
+                r["charge"] = st == "offensive" and desc == "charge"
         rows.append(r)
     return pd.DataFrame(rows, columns=EVENT_COLS)
 
@@ -169,6 +177,9 @@ def events_v3(payload: dict, game_id: str, box_df: pd.DataFrame) -> pd.DataFrame
             r["etype"] = at.lower().replace(" ", "")
             if at == "Foul":
                 r["technical"] = "technical" in st.lower() or "T.FOUL" in r["desc"].upper()
+                # v3 has no drawn-by field (drawn_id stays 0); charges only if the subtype says so
+                r["foul_type"] = "offensive" if st.lower().startswith("offensive") else st.lower().replace(" ", "_")
+                r["charge"] = "charge" in st.lower()
         rows.append(r)
     return pd.DataFrame(rows, columns=EVENT_COLS)
 

@@ -27,7 +27,8 @@ def ev(rows):
     for seq, r in enumerate(rows):
         base = {"game_id": GAME, "seq": seq, "period": 1, "elapsed": 0.0, "team_id": 0, "person_id": 0,
                 "etype": "other", "made": False, "value": 0, "points": 0, "ft_num": np.nan, "ft_of": np.nan,
-                "technical": False, "in_id": 0, "out_id": 0, "desc": ""}
+                "technical": False, "in_id": 0, "out_id": 0, "foul_type": "", "drawn_id": 0, "charge": False,
+                "ball_team": 0, "desc": ""}
         base.update(r)
         out.append(base)
     return pd.DataFrame(out, columns=EVENT_COLS)

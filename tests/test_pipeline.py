@@ -65,3 +65,28 @@ def test_player_flag_needs_both_floors_and_direction_split():
     assert t.flag_avg.tolist() == [False, True, False, False]   # 5% but 1 poss; 2.3% and 70 poss
     d = gap_direction(t).set_index("measure").loc["gap_poss_avg"]
     assert (d.over, d.under, d.investigate) == (2, 2, False)
+
+
+def test_foul_split_by_side_and_drawn():
+    from toy import ev
+
+    from pacersml.data.per100 import foul_counts
+    from pacersml.data.possessions import assign_possessions
+    rows = [
+        dict(etype="period_start"),
+        dict(elapsed=1, team_id=AWAY, person_id=21, etype="foul", foul_type="personal"),         # no ball yet
+        dict(elapsed=5, team_id=HOME, person_id=11, etype="fg", value=2),                         # IND ball
+        dict(elapsed=6, team_id=AWAY, person_id=22, etype="foul", foul_type="shooting", drawn_id=11),
+        dict(elapsed=7, team_id=HOME, person_id=12, etype="foul", foul_type="loose_ball", drawn_id=23),
+        dict(elapsed=8, team_id=HOME, person_id=13, etype="foul", foul_type="offensive", charge=True, drawn_id=24),
+        dict(elapsed=8, team_id=HOME, person_id=13, etype="turnover"),
+        dict(elapsed=9, team_id=AWAY, person_id=21, etype="foul", technical=True, foul_type="technical"),
+    ]
+    fc = foul_counts(assign_possessions(ev(rows)).assign(pbp_source="cdn_pbp"), full_box())
+    assert fc.loc[21, "pf_side_unknown"] == 1 and fc.loc[21, "pf_def"] == 0      # technical ignored
+    assert fc.loc[22, "pf_def"] == 1 and fc.loc[11, "fouls_drawn"] == 1
+    assert fc.loc[12, "pf_off_other"] == 1 and fc.loc[23, "fouls_drawn"] == 0   # drawn on defense: not counted
+    assert fc.loc[13, "pf_offensive"] == 1 and fc.loc[13, "pf_def"] == 0
+    assert fc.loc[24, "charges_drawn"] == 1 and fc.loc[24, "off_fouls_drawn"] == 1
+    v3 = foul_counts(assign_possessions(ev(rows)).assign(pbp_source="stats_pbp"), full_box())
+    assert v3.fouls_drawn.isna().all()
