@@ -40,12 +40,14 @@ class EndpointBlocked(RuntimeError):
 
 
 class EndpointError(RuntimeError):
-    """The host answers but this endpoint returns server errors (e.g. gamerotation's 500 since 2026-10-20).
-    The host stays usable; after `disable_after` consecutive failures the endpoint is skipped for the run."""
+    """The host answers but this endpoint keeps returning server errors (e.g. gamerotation 500s seen on the
+    hotspot, 2026-10-20). Each call retries with backoff first (D10). The host stays usable; after
+    `disable_after` consecutive failed calls the endpoint is skipped for the rest of the run."""
 
 
 class Client:
-    def __init__(self, timeout: float = 30.0, min_interval: float = 1.0, retries: int = 3, disable_after: int = 3):
+    # 1.5-2.0 s between requests (D10): a working fingerprint gets banned by pulling fast, not by pulling.
+    def __init__(self, timeout: float = 30.0, min_interval: float = 1.5, retries: int = 3, disable_after: int = 5):
         self.timeout = timeout
         self.min_interval = min_interval
         self.retries = retries
@@ -57,7 +59,7 @@ class Client:
         self._server_errors: dict[str, int] = {}
 
     def _throttle(self) -> None:
-        wait = self.min_interval + random.uniform(0, 0.4) - (time.monotonic() - self._last)
+        wait = self.min_interval + random.uniform(0, 0.5) - (time.monotonic() - self._last)
         if wait > 0:
             time.sleep(wait)
         self._last = time.monotonic()
@@ -70,6 +72,7 @@ class Client:
         if endpoint in self.disabled_endpoints:
             raise EndpointError(f"{endpoint} disabled this run after repeated server errors")
         last_err: Exception | None = None
+        server_error = False
         for attempt in range(self.retries):
             self._throttle()
             try:
@@ -82,15 +85,17 @@ class Client:
                     return r.json()
                 if r.status_code == 404:
                     raise FileNotFoundError(f"404 {r.url}")
-                if r.status_code >= 500 and r.elapsed.total_seconds() < self.timeout:
-                    # A fast 5xx is the endpoint failing, not the host blocking us: one try, no backoff.
-                    n = self._server_errors.get(endpoint, 0) + 1
-                    self._server_errors[endpoint] = n
-                    if n >= self.disable_after:
-                        self.disabled_endpoints.add(endpoint)
-                    raise EndpointError(f"HTTP {r.status_code} {endpoint} ({n} in a row)")
+                # a fast 5xx is the endpoint failing, not the host blocking us
+                server_error = r.status_code >= 500 and r.elapsed.total_seconds() < self.timeout
                 last_err = RuntimeError(f"HTTP {r.status_code} {r.url}")
-            time.sleep(2 ** attempt * 2)
+            if attempt + 1 < self.retries:
+                time.sleep(2 ** attempt * 2)
+        if server_error:
+            n = self._server_errors.get(endpoint, 0) + 1
+            self._server_errors[endpoint] = n
+            if n >= self.disable_after:
+                self.disabled_endpoints.add(endpoint)
+            raise EndpointError(f"{endpoint}: {last_err} after {self.retries} tries ({n} calls in a row)")
         self.blocked_hosts.add(host)
         raise EndpointBlocked(f"{host}: {last_err}")
 

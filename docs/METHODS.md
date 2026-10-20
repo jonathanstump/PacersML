@@ -54,12 +54,12 @@ Also recorded for later rebound percentages: `live_miss` (missed FG or missed *l
 
 **What it does.** A stint is a stretch of game time with the same ten players on the floor. Two builders:
 
-- **Rotation builder.** stats.nba.com `gamerotation` gives, for every player, each stretch he was on
+- **Rotation builder (primary).** stats.nba.com `gamerotation` gives, for every player, each stretch he was on
   the floor (in/out time, to the tenth of a second). That decides *who* is on the floor. When an event happens
   in the same second as a substitution (e.g. FT 1, sub, FT 2), the play-by-play order decides which side of the
   substitution it falls on.
-  *As of 2026-10-20 `gamerotation` returns HTTP 500 for every game, so this builder is unused (D9).*
-- **PBP rebuild (D3; currently the main path, D9).** Uses only the play-by-play: each period's starting five is inferred, then
+  If `gamerotation` keeps failing for a game (3 tries with backoff), that game falls back to the rebuild (D10).
+- **PBP rebuild (fallback, D3).** Uses only the play-by-play: each period's starting five is inferred, then
   every substitution swaps one player. Starters are inferred as: anyone whose first appearance in the period
   is anything other than being subbed in; if fewer than 5, fill from the previous period's closing five; if still
   short, fill from the rest of the roster by box-score minutes (never anyone subbed in during that period).
@@ -187,6 +187,10 @@ Season-level:
 - direction of player gaps: share of player-seasons over vs under NBA; outside 40/60 is marked "investigate" (D7).
 
 Plots and pass-rate tables per season go to `reports/validation/`.
+
+Before any of this, every refresh runs the access probe and stops if the game log, box score v3 or liveData
+play-by-play isn't answering (D10). Games with no rotation data (fell back to the rebuild) are counted per season
+in the run summary and in `site_export/quarantine.json`.
 
 **Toy example** (one game, three players).
 

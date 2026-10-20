@@ -94,10 +94,13 @@ request with timeouts counted as blocked, status code and latency recorded.
 | 2026-10-20 03:09 | GitHub Actions (AS8075) | v2 (sec-* headers) | timeout ×5 | 403 ×3 | ok |
 | 2026-10-20 03:45 | laptop, campus (AS3782) | v2 (sec-* headers) | ok ×5 (gamerotation 200) | ok ×3 | ok |
 
-Still to measure: scheduled GitHub runs 2 and 3 (v2).
+Scheduled GitHub runs 2 and 3 (v2, 2026-10-20 08:30 and 15:30 UTC) are still to run; they will be appended here.
+Given run 1, timeouts are expected, and the decision below does not wait on them.
 
-**Outcome:** _pending — Jonathan picks the setup after the remaining runs. Re-run the probe if hosted pulls
-start failing later in the season._
+**Result (2026-10-20):** v2 headers fix laptop access on both networks (campus and hotspot); GitHub's network
+(AS8075, Microsoft cloud) is blocked from both NBA sources whatever the headers. Setup: **laptop refresh, GitHub
+deploy** (the "everything blocked" reading, applied to GitHub). Re-run the probe if laptop pulls start failing;
+every refresh now runs it first (D10).
 
 ---
 
@@ -207,6 +210,8 @@ way no check would catch. With the check passing, any future plus-minus mismatch
 
 ## D9 — Data access route (2026-10-20, Phase 1)
 
+> **Superseded by D10** (same day). Kept for the record of why the plan changed.
+
 **Context:** With the v1 probe headers, NBA refused every network tested (campus, hotspot, GitHub).
 
 **Options considered:** (1) GitHub archive (shufinskiy/nba_data) for 2024-25 and 2025-26 + pbpstats per-game
@@ -233,3 +238,32 @@ The two adjustments below still apply to any game that ends up on the rebuild.
 **If the laptop route stops working for 2026-27:** fall back to pbpstats for 2026-27 only, and first compute
 pbpstats' possession definition on the archive seasons to measure its gap from ours. Under about 1%: projecting
 into the frozen model is acceptable. Larger: settle that before any drift analysis (H2/H3).
+
+---
+
+## D10 — Back to the original data plan, run from the laptop (2026-10-20, Phase 1) — supersedes D9
+
+**What the probe table (D4) shows:** on the laptop the block was on the request, not the network: same campus and
+hotspot networks, v1 headers blocked everywhere, v2 headers got through on everything, including gamerotation on
+campus. On GitHub the block is on the network: v2 changed nothing there (AS8075 is Microsoft's cloud range).
+
+**Decision:**
+- **Original data plan, run from the laptop.** Rotation-based stints are the main path again; the PBP rebuild is
+  the fallback, as originally designed. D9's "archive + pbpstats + browser" route and the weekly browser step are
+  dropped.
+- **Weekly refresh runs on the laptop; GitHub only builds and deploys the site** (D4 result).
+- **Quarantine alarm back to the original 1% (D3).** D9's re-measuring was only needed because every game was going
+  through the rebuild. The extra period-starter spot checks stay (3 Pacers games including one overtime game),
+  because the rebuild still handles fallback games.
+- **gamerotation server errors are a retry case:** retry with backoff (3 tries); if it keeps failing, that game
+  goes to the PBP rebuild, and the existing quarantine design covers the rest. The run summary, `status.json`,
+  `data/processed/{season}/rotation_unavailable.parquet` and the site's quarantine export all count these games,
+  so a pile-up is visible. Implementation detail: after 5 games in a row fail, the endpoint is skipped for the rest
+  of that run so an outage can't add hours to an overnight backfill; the skipped games are still counted.
+
+**Risks planned for, now that the laptop is the only working route:**
+- **The headers can stop working at any time** (NBA has changed what it checks before). Every refresh starts with
+  the access probe and stops with a clear message, before fetching anything, if the game log, box score v3 or
+  liveData play-by-play fails. A refresh never runs on partial data.
+- **Pull at a polite rate:** 1.5–2.0 s between requests. The backfill is a one-time job and runs slowly overnight;
+  firing three seasons as fast as possible is how a working fingerprint gets banned.

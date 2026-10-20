@@ -4,7 +4,8 @@ One request per endpoint, no retries, 15 s timeout. A timeout is recorded as `bl
 stats.nba.com tends to hang rather than refuse when it blocks an IP range.
 
 Writes reports/access_probe/{label}_{utc timestamp}.json and, under GitHub Actions, a table in the job summary.
-Only depends on `requests` so the workflow installs nothing else.
+Only depends on `requests` so the workflow installs nothing else. scripts/refresh.py imports `run` as a preflight
+and stops if any endpoint in REQUIRED fails (D10).
 
     python scripts/probe_endpoints.py --label laptop
 """
@@ -66,6 +67,9 @@ PROBES = [
     ("pbpstats.com", "get-games", "https://api.pbpstats.com/get-games/nba",
      {"Season": SEASON, "SeasonType": "Regular Season"}, {"User-Agent": UA}),
 ]
+# A weekly refresh cannot produce complete data without these. gamerotation has a fallback (PBP rebuild),
+# leaguedash only feeds cross-checks, pbpstats only the reported possession comparison.
+REQUIRED = {"leaguegamelog", "boxscoretraditionalv3", "liveData_playbyplay"}
 
 
 def probe_one(source, endpoint, url, params, headers) -> dict:
@@ -97,23 +101,24 @@ def network_owner() -> str:
         return "unknown"
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--label", default="github-actions" if os.getenv("GITHUB_ACTIONS") else "local")
-    ap.add_argument("--out", default="reports/access_probe")
-    args = ap.parse_args()
-
+def run(label: str, out_dir: str | Path = "reports/access_probe") -> dict:
+    """Probe every endpoint, write the JSON report, print the table. Returns the report with `failed_required`."""
     now = datetime.now(timezone.utc)
-    rows = [probe_one(*p) for p in PROBES]
-    out = {"label": args.label, "utc": now.isoformat(timespec="seconds"), "network": network_owner(),
-           "platform": platform.platform(), "header_set": HEADER_SET, "timeout_s": TIMEOUT, "game_id": GAME_ID, "results": rows}
+    rows = []
+    for p in PROBES:
+        rows.append(probe_one(*p))
+        time.sleep(1.5)  # same polite pace as the pipeline
+    out = {"label": label, "utc": now.isoformat(timespec="seconds"), "network": network_owner(),
+           "platform": platform.platform(), "header_set": HEADER_SET, "timeout_s": TIMEOUT, "game_id": GAME_ID,
+           "results": rows}
+    out["failed_required"] = sorted(r["endpoint"] for r in rows if r["endpoint"] in REQUIRED and r["result"] != "ok")
 
-    out_dir = Path(args.out)
+    out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{args.label}_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
+    path = out_dir / f"{label}_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
     path.write_text(json.dumps(out, indent=2))
 
-    lines = [f"### Access probe: {args.label} @ {out['utc']} ({out['network']})", "",
+    lines = [f"### Access probe: {label} @ {out['utc']} ({out['network']})", "",
              "| source | endpoint | result | status | latency_s | bytes | error |", "|---|---|---|---|---|---|---|"]
     lines += [f"| {r['source']} | {r['endpoint']} | {r['result']} | {r['status']} | {r['latency_s']} | "
               f"{r['bytes']} | {r['error']} |" for r in rows]
@@ -123,6 +128,15 @@ def main() -> None:
     if summary := os.getenv("GITHUB_STEP_SUMMARY"):
         with open(summary, "a", encoding="utf-8") as f:
             f.write(table + "\n")
+    return out
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--label", default="github-actions" if os.getenv("GITHUB_ACTIONS") else "local")
+    ap.add_argument("--out", default="reports/access_probe")
+    args = ap.parse_args()
+    run(args.label, args.out)
 
 
 if __name__ == "__main__":

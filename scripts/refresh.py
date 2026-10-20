@@ -3,7 +3,9 @@
     python scripts/refresh.py                                   # all three seasons, all season types
     python scripts/refresh.py --seasons 2025-26 --game-ids 0022500001 --no-write   # one-game smoke test
 
-Exit codes: 0 ok · 2 quarantine alarm (> 1% of a season's games, D3) · 3 every source blocked
+Every run starts with the access probe (D10) and stops before fetching anything if a required endpoint fails.
+
+Exit codes: 0 ok · 2 quarantine alarm (> 1% of a season's games, D3) · 3 every source blocked, or preflight failed
             4 team-season possession cross-check > 2% (D1)
 Processed outputs for a season are not overwritten when that season trips 2 or 4.
 """
@@ -56,7 +58,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
         games = games.head(args.limit)
     print(f"\n=== {season}: {len(games)} final games ===")
 
-    results, blocked = [], []
+    results, blocked, no_rotation = [], [], []
     t0 = time.monotonic()
     for i, g in enumerate(games.itertuples(index=False)):
         g = pd.Series(g._asdict())
@@ -66,6 +68,9 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
             blocked.append(g.game_id)
             print(f"  {g.game_id}: blocked ({e})")
             continue
+        if data.rotation is None:
+            no_rotation.append({"game_id": g.game_id, "season": season, "season_type": g.season_type,
+                                "pacers_game": PACERS in (g.home_team_id, g.away_team_id)})
         results.append(process_game(g, data))
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(games)} games ({time.monotonic() - t0:.0f}s)")
@@ -119,14 +124,17 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
         print(f"  !! quarantine alarm: {len(q_ids)}/{len(results)} games ({rate:.1%}) > {QUARANTINE_ALARM:.0%} (D3)")
 
     n_rebuilt = int(checks[checks.method == "pbp_rebuild"].game_id.nunique())
+    no_rot = pd.DataFrame(no_rotation, columns=["game_id", "season", "season_type", "pacers_game"])
     summary = {"games": int(len(games)), "processed": len(results), "blocked": len(blocked),
                "quarantined": len(q_ids), "quarantine_rate": round(rate, 4), "pbp_rebuild_used": n_rebuilt,
+               "rotation_unavailable": len(no_rot),
                "player_poss_flagged": n_flag,
                "player_gap_direction": json.loads(direction.to_json(orient="records")),
                "stints": int(len(clean_stints)), "exit_code": code,
                "nba_reference": {st: {k: v is not None for k, v in r.items()} for st, r in ref_tables.items()}}
     status["seasons"][season] = summary
-    print(f"  processed {len(results)} · blocked {len(blocked)} · PBP rebuild used {n_rebuilt} · "
+    print(f"  processed {len(results)} · blocked {len(blocked)} · rotation unavailable {len(no_rot)} · "
+          f"PBP rebuild used {n_rebuilt} · "
           f"quarantined {len(q_ids)} ({rate:.2%})")
     pacers_q = quarantine[quarantine.pacers_game] if not quarantine.empty else quarantine
     if not pacers_q.empty:
@@ -138,6 +146,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     out.mkdir(parents=True, exist_ok=True)
     checks.to_parquet(out / "validation.parquet", index=False)
     quarantine.to_parquet(out / "quarantine.parquet", index=False)
+    no_rot.to_parquet(out / "rotation_unavailable.parquet", index=False)
     plot_season(season, checks, team_tbl, player_tbl, ROOT / "reports" / "validation")
     direction.to_csv(ROOT / "reports" / "validation" / f"{season}_player_poss_gap_direction.csv", index=False)
     if args.no_write or code in (2, 4):
@@ -169,15 +178,41 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
 
 
 def export_quarantine():
-    parts = [pd.read_parquet(p) for p in sorted(cache.PROCESSED.glob("*/quarantine.parquet"))]
-    q = pd.concat([p for p in parts if not p.empty], ignore_index=True) if any(not p.empty for p in parts) else pd.DataFrame()
+    """Quarantine list plus, per season, how many games had no rotation data (fell back to the PBP rebuild),
+    so a pile-up of gamerotation failures is visible on the site's Methods page (D10)."""
+    def gather(name):
+        parts = [pd.read_parquet(p) for p in sorted(cache.PROCESSED.glob(f"*/{name}.parquet"))]
+        parts = [p for p in parts if not p.empty]
+        return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+    q, no_rot = gather("quarantine"), gather("rotation_unavailable")
     cache.PROCESSED.mkdir(parents=True, exist_ok=True)
     q.to_parquet(cache.PROCESSED / "quarantine.parquet", index=False)
     site = ROOT / "site_export"
     site.mkdir(exist_ok=True)
     (site / "quarantine.json").write_text(json.dumps({
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "rotation_unavailable_games": (no_rot.groupby("season").size().to_dict() if not no_rot.empty else {}),
         "games": json.loads(q.to_json(orient="records")) if not q.empty else []}, indent=2))
+
+
+def preflight(status: dict) -> bool:
+    """Run the access probe; False (with a clear message) if any endpoint the refresh needs is failing."""
+    import probe_endpoints  # scripts/ is on sys.path when this file runs
+    report = probe_endpoints.run("refresh-preflight")
+    status["preflight"] = {"network": report["network"], "failed_required": report["failed_required"]}
+    if report["failed_required"]:
+        print("\n" + "!" * 78)
+        print(f"PREFLIGHT FAILED: {', '.join(report['failed_required'])} not answering from {report['network']}.")
+        print("Nothing was fetched or written. If the probe shows 403s or timeouts on every NBA endpoint, NBA has")
+        print("probably changed what it checks: compare the headers in src/pacersml/data/http.py with a real")
+        print("browser request to nba.com before retrying.")
+        print("!" * 78)
+        return False
+    rot = next(r for r in report["results"] if r["endpoint"] == "gamerotation")
+    if rot["result"] != "ok":
+        print(f"\n  note: gamerotation not answering ({rot['status'] or rot['error']}); games will use the PBP rebuild")
+    return True
 
 
 def main() -> int:
@@ -189,11 +224,15 @@ def main() -> int:
     ap.add_argument("--limit", type=int)
     ap.add_argument("--force", action="store_true", help="re-process a frozen training season")
     ap.add_argument("--no-write", action="store_true", help="validate only; don't write processed tables")
+    ap.add_argument("--skip-preflight", action="store_true", help="skip the access probe (tests / debugging only)")
     args = ap.parse_args()
 
     c = Client()
     status = {"started_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), "seasons": {}, "notes": []}
     codes = []
+    if not args.skip_preflight and not preflight(status):
+        codes.append(3)
+        args.seasons = []
     for season in args.seasons:
         if cache.is_frozen(season) and not args.force:
             print(f"\n=== {season}: frozen (see data/manifest.json), skipped ===")
