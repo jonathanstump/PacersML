@@ -83,8 +83,20 @@ request with timeouts counted as blocked, status code and latency recorded.
 - Only stats.nba.com blocked → laptop pulls stats.nba.com endpoints; GitHub handles the rest and the site deploy.
 - Everything blocked → laptop runs the refresh; GitHub only builds and deploys the site from pushed data.
 
-**Outcome:** _pending — fill in with date after the 3 probe runs. Re-run the probe if hosted pulls start
-failing later in the season._
+**Measurements so far** (`reports/access_probe/`; numbers only):
+
+| date (UTC) | where | headers | stats.nba.com | cdn.nba.com | pbpstats.com |
+|---|---|---|---|---|---|
+| 2026-10-19 17:39 | laptop, campus (AS3782) | v1 | timeout ×5 | 403 ×3 | ok |
+| 2026-10-20 02:30 | GitHub Actions (AS8075) | v1 | timeout ×5 | 403 ×3 | timeout |
+| 2026-10-20 02:47 | laptop, hotspot (AS6167) | v1 | timeout ×5 | 403 ×3 | ok |
+| 2026-10-20 03:05 | laptop, hotspot (AS6167) | v2 (sec-* headers) | ok ×4, gamerotation 500 | ok ×3 | ok |
+| 2026-10-20 03:09 | GitHub Actions (AS8075) | v2 (sec-* headers) | timeout ×5 | 403 ×3 | ok |
+
+Still to measure: campus network with v2 headers; scheduled GitHub runs 2 and 3 (v2).
+
+**Outcome:** _pending — Jonathan picks the setup after the remaining runs. Re-run the probe if hosted pulls
+start failing later in the season._
 
 ---
 
@@ -147,3 +159,52 @@ attribution evens out at team level, so a gap there means something is broken) a
 (definitional gaps should split about evenly; a lopsided split points to a systematic bug such as possessions
 dropped at period ends, even when every individual gap is small). Low-possession players never reach the
 analysis anyway, since the Phase 2 archetype model applies a minutes cutoff.
+
+---
+
+## D8 — Free-throw attribution in stints (2026-10-20, Phase 1)
+
+**Decision:**
+- A free-throw trip (shooting fouls, and-ones, flagrant and clear-path FTs) is credited to the lineup on the floor
+  **at the foul**, even when NBA logs substitutions between the free throws.
+- Technical free throws are credited to the lineup on the floor **when the technical was called**; they are never
+  bundled with a nearby shooting trip.
+- The trip ends at the last free throw. Everything after it (rebound of a missed last FT, a putback, the possession
+  retained after a flagrant or clear-path foul, the next play) goes to the lineup on the floor at the time.
+- The plus-minus check stays strict: exact match per player-game.
+
+**Options considered:** (a) lineup at the foul, (b) play-by-play order (each FT to whoever is on the floor at that
+line of the log).
+
+**Reasoning:** It matches NBA's box-score plus-minus: on the first real test game (0022500005) every player
+matched exactly, versus 20 players off by up to 4 under PBP order. Free throws come from a foul against the
+lineup on the floor, so the trip belongs to that lineup; crediting FT 2 to incoming players would hand them
+points for a play they weren't part of. It also keeps points and possessions under one attribution rule
+(possessions already go to the lineup that started them); splitting them would corrupt per-100 numbers in a
+way no check would catch. With the check passing, any future plus-minus mismatch means a real bug.
+
+---
+
+## D9 — Data access route (2026-10-20, Phase 1)
+
+**Context:** With the v1 probe headers, NBA refused every network tested (campus, hotspot, GitHub).
+
+**Options considered:** (1) GitHub archive (shufinskiy/nba_data) for 2024-25 and 2025-26 + pbpstats per-game
+stats as the box score + browser route for 2026-27; (2) pbpstats only; (3) find an unblocked network.
+
+**Decision:** Option 1, conditional on first testing whether the block was the request's fingerprint rather than
+the network. Option 1 is the only one that keeps stints, which H1 (on/off) and H4 (RAPM) depend on.
+
+**Fingerprint test result (2026-10-20):** adding browser `sec-ch-ua` / `sec-fetch-*` headers made stats.nba.com
+and cdn.nba.com answer from the hotspot (see D4 table), so the original sources are back for laptop pulls, with
+one exception: `gamerotation` returns HTTP 500 for every game tried, so **every game goes through the PBP
+rebuild**. GitHub Actions remains blocked by network. The archive / browser route is on hold, not built.
+
+**Adjustments that still apply because every game now uses the rebuild:**
+- Re-measure the quarantine threshold: run all of 2024-25, check the actual quarantine rate, and re-set the D3
+  alarm here from that, not from the earlier guess.
+- Spot-check period starters on **3** Pacers games against what Jonathan watched, including at least one overtime game.
+
+**If the laptop route stops working for 2026-27:** fall back to pbpstats for 2026-27 only, and first compute
+pbpstats' possession definition on the archive seasons to measure its gap from ours. Under about 1%: projecting
+into the frozen model is acceptable. Larger: settle that before any drift analysis (H2/H3).

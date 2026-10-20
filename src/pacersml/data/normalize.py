@@ -4,6 +4,7 @@ Canonical play-by-play event (one row per action, in source order):
     game_id, seq, period, elapsed (seconds since tip-off), team_id, person_id,
     etype, made, value, points, ft_num, ft_of, technical, in_id, out_id, desc
 etype ∈ {period_start, period_end, fg, ft, rebound, turnover, foul, sub, jumpball, other}.
+`technical` marks technical free throws and technical fouls.
 `value` is the shot value (2/3 for field goals, 1 for free throws) whether or not it went in.
 For etype == "sub", in_id / out_id are the players entering / leaving (person_id is unused).
 
@@ -120,6 +121,8 @@ def events_live(payload: dict, game_id: str) -> pd.DataFrame:
                      out_id=r["person_id"] if st == "out" else 0)
         elif at in ("rebound", "turnover", "foul", "jumpball"):
             r["etype"] = at
+            if at == "foul":
+                r["technical"] = "technical" in st or "T.FOUL" in r["desc"].upper()
         rows.append(r)
     return pd.DataFrame(rows, columns=EVENT_COLS)
 
@@ -164,6 +167,8 @@ def events_v3(payload: dict, game_id: str, box_df: pd.DataFrame) -> pd.DataFrame
                     r.update(out_id=r["person_id"], in_id=lookup(in_name))
         elif at in ("Rebound", "Turnover", "Foul", "Jump Ball"):
             r["etype"] = at.lower().replace(" ", "")
+            if at == "Foul":
+                r["technical"] = "technical" in st.lower() or "T.FOUL" in r["desc"].upper()
         rows.append(r)
     return pd.DataFrame(rows, columns=EVENT_COLS)
 

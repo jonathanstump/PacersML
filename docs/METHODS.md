@@ -54,14 +54,28 @@ Also recorded for later rebound percentages: `live_miss` (missed FG or missed *l
 
 **What it does.** A stint is a stretch of game time with the same ten players on the floor. Two builders:
 
-- **Rotation builder (primary).** stats.nba.com `gamerotation` gives, for every player, each stretch he was on
+- **Rotation builder.** stats.nba.com `gamerotation` gives, for every player, each stretch he was on
   the floor (in/out time, to the tenth of a second). That decides *who* is on the floor. When an event happens
   in the same second as a substitution (e.g. FT 1, sub, FT 2), the play-by-play order decides which side of the
   substitution it falls on.
-- **PBP rebuild (fallback, D3).** Uses only the play-by-play: each period's starting five is inferred, then
+  *As of 2026-10-20 `gamerotation` returns HTTP 500 for every game, so this builder is unused (D9).*
+- **PBP rebuild (D3; currently the main path, D9).** Uses only the play-by-play: each period's starting five is inferred, then
   every substitution swaps one player. Starters are inferred as: anyone whose first appearance in the period
   is anything other than being subbed in; if fewer than 5, fill from the previous period's closing five; if still
   short, fill from the rest of the roster by box-score minutes (never anyone subbed in during that period).
+
+**Free-throw crediting (D8)**, applied after either builder:
+
+| situation | credited to |
+|---|---|
+| shooting-foul trip (FT 1, sub, FT 2) | lineup on the floor at the foul |
+| and-one FT | lineup at the foul (the made shot's lineup) |
+| flagrant / clear-path FTs | lineup at the foul; the retained possession after them → lineup on the floor then |
+| technical FT | lineup on the floor when the technical was called, never a nearby trip |
+| anything after the last FT of a trip (rebound of a missed last FT, putback, next play) | lineup on the floor at the time |
+
+Implementation: each FT is anchored to the last real play before it (subs, timeouts/replays and dead-ball
+rebounds between FTs are skipped); technical FTs are anchored to the last technical foul.
 
 Each stint stores both lineups, start/end time, seconds, points and possessions for each team, plus missed FGs,
 missed last FTs and offensive/defensive rebounds (rebound-percentage ingredients for Phase 2).
@@ -70,10 +84,10 @@ missed last FTs and offensive/defensive rebounds (rebound-percentage ingredients
 
 | stint | seconds | IND on floor | NYK on floor | IND pts | NYK pts | IND poss | NYK poss |
 |---|---|---|---|---|---|---|---|
-| 0 | 0–60 | 11 12 13 14 15 | 21–25 | 5 | 1 | 2 | 2 |
-| 1 | 60–720 | 11 12 13 15 16 | 21–25 | 0 | 3 | 1 | 1 |
+| 0 | 0–60 | 11 12 13 14 15 | 21–25 | 5 | 2 | 2 | 2 |
+| 1 | 60–720 | 11 12 13 15 16 | 21–25 | 0 | 2 | 1 | 1 |
 
-The sub (16 for 14) is logged between NYK's two free throws, so FT 1 counts in stint 0 and FT 2 in stint 1.
+The sub (16 for 14) is logged between NYK's two free throws; both FTs count in stint 0, the lineup at the foul (D8).
 Player 15 never appears in an event and is filled in by the rebuild from box-score minutes.
 
 **What could make it wrong.**
@@ -88,8 +102,8 @@ Player 15 never appears in an event and is filled in by the rebuild from box-sco
 
 **Questions you should be able to answer.**
 1. Why does the rotation builder still need the play-by-play at all?
-2. In the toy example, why does NYK's second free throw count against the lineup with player 16 and not 14?
-   Would you get the same answer from the rotation data alone?
+2. In the toy example the sub is logged between NYK's free throws. Why do both count against the lineup with
+   player 14, and what would happen to the plus-minus check if FT 2 went to the lineup with player 16?
 3. A rebuild fails on minutes for one player by exactly 12:00. What is the most likely cause?
 
 ---

@@ -51,10 +51,13 @@ def pbp_v3(c: Client, game_id: str) -> dict:
     return c.stats("playbyplayv3", {"GameID": game_id, "StartPeriod": 0, "EndPeriod": 0})
 
 
-def rotation(c: Client, game_id: str) -> pd.DataFrame:
+def rotation(c: Client, game_id: str) -> dict:
+    return c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"})
+
+
+def rotation_frame(payload: dict, game_id: str) -> pd.DataFrame:
     """One row per player stretch on the floor; IN/OUT_TIME_REAL in tenths of a second from tip-off."""
-    p = c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"})
-    df = pd.concat([_result_set(p, "AwayTeam"), _result_set(p, "HomeTeam")], ignore_index=True)
+    df = pd.concat([_result_set(payload, "AwayTeam"), _result_set(payload, "HomeTeam")], ignore_index=True)
     return pd.DataFrame({
         "game_id": game_id,
         "team_id": df["TEAM_ID"].astype("int64"),

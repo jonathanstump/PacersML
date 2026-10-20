@@ -45,8 +45,36 @@ def _segments_to_stints(ev, segments, home, away, game_id, source):
                      "seconds": round(t1 - t0, 2), "home_ids": tuple(sorted(lineup[home])),
                      "away_ids": tuple(sorted(lineup[away])), "source": source})
     stints = pd.DataFrame(rows)
-    ev = ev.assign(stint_id=stint_of_event.to_numpy())
+    ev = credit_ft_trips(ev.assign(stint_id=stint_of_event.to_numpy()))
     return _aggregate(stints, ev, home, away), ev
+
+
+def credit_ft_trips(ev: pd.DataFrame) -> pd.DataFrame:
+    """Free throws belong to the lineup on the floor when the foul happened (D8), matching NBA's box +/-.
+
+    Shooting trips, and-ones, flagrant and clear-path FTs: anchored to the last real play before the trip
+    (normally the foul), skipping subs, timeouts/replays ('other') and dead-ball rebounds between FTs.
+    Technical FTs: anchored to the most recent technical foul, never to a nearby shooting trip.
+    Everything after the last FT of a trip (rebound of a missed last FT, the retained possession after a
+    flagrant, the next play) keeps the stint it happened in.
+    """
+    stint = ev.stint_id.to_numpy().copy()
+    last_play, last_tech = None, None
+    period = None
+    for i, e in enumerate(ev.itertuples(index=False)):
+        if e.period != period:
+            period, last_play, last_tech = e.period, None, None
+        if e.etype == "ft":
+            anchor = last_tech if e.technical else last_play
+            if anchor is not None:
+                stint[i] = stint[anchor]
+        elif e.etype == "foul" and e.technical:
+            last_tech = i
+        elif e.etype in ("sub", "other", "period_start") or (e.etype == "rebound" and not e.reb_live):
+            continue
+        else:
+            last_play = i
+    return ev.assign(stint_id=stint)
 
 
 def _aggregate(stints, ev, home, away):

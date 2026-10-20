@@ -63,50 +63,45 @@ def game_list(c: Client, season: str, season_types: list[str], source: str) -> t
 
 # ---------------------------------------------------------------- per-game fetch
 
-def load_game(c: Client, season: str, gid: str, source: str) -> GameData:
-    """Cached normalized frames if present, else fetch. Raises EndpointBlocked if no source answers."""
-    srcs = {}
-    if cache.has_raw(season, "box", gid):
-        box = cache.read_raw(season, "box", gid)
-    else:
-        box = None
-        if source in ("auto", "stats"):
-            try:
-                box, srcs["box"] = normalize.box(stats_nba.box_v3(c, gid), gid), "stats"
-            except UNAVAILABLE:
-                pass
-        if box is None and source in ("auto", "cdn"):
-            box, srcs["box"] = normalize.box(cdn_nba.box_live(c, gid), gid), "cdn"
-        if box is None:
-            raise EndpointBlocked(f"{gid}: no box score source")
-        cache.write_raw(box, season, "box", gid)
+BOX_FETCHERS = [("stats_box", stats_nba.box_v3), ("cdn_box", cdn_nba.box_live)]
+PBP_FETCHERS = [("stats_pbp", stats_nba.pbp_v3), ("cdn_pbp", cdn_nba.pbp_live)]
+ROTATION_FETCHERS = [("stats_rotation", stats_nba.rotation)]
 
-    if cache.has_raw(season, "events", gid):
-        ev = cache.read_raw(season, "events", gid)
-    else:
-        ev = None
-        if source in ("auto", "stats"):
-            try:
-                ev, srcs["events"] = normalize.events_v3(stats_nba.pbp_v3(c, gid), gid, box), "stats"
-            except UNAVAILABLE:
-                pass
-        if ev is None and source in ("auto", "cdn"):
-            ev = normalize.merge_live_subs(normalize.events_live(cdn_nba.pbp_live(c, gid), gid))
-            srcs["events"] = "cdn"
-        if ev is None:
-            raise EndpointBlocked(f"{gid}: no play-by-play source")
-        cache.write_raw(ev, season, "events", gid)
 
-    rot = None
-    if cache.has_raw(season, "rotation", gid):
-        rot = cache.read_raw(season, "rotation", gid)
-    elif source in ("auto", "stats"):
+def _payload(c: Client, season: str, gid: str, source: str, fetchers) -> tuple[str, dict] | None:
+    """Cached raw payload if any allowed source has one, else fetch from the first allowed source that answers."""
+    allowed = [(k, fn) for k, fn in fetchers if source == "auto" or k.startswith(source)]
+    hit = cache.find_raw(season, [k for k, _ in allowed], gid)
+    if hit:
+        return hit
+    for key, fn in allowed:
         try:
-            rot = stats_nba.rotation(c, gid)
-            cache.write_raw(rot, season, "rotation", gid)
-            srcs["rotation"] = "stats"
+            payload = fn(c, gid)
         except UNAVAILABLE:
-            pass  # not cached: tried again next refresh; this run uses the PBP rebuild
+            continue
+        cache.write_raw(payload, season, key, gid)
+        return key, payload
+    return None
+
+
+def load_game(c: Client, season: str, gid: str, source: str) -> GameData:
+    """Raw payloads (cached or fetched), normalized here. Raises EndpointBlocked if no box or PBP source answers."""
+    box_hit = _payload(c, season, gid, source, BOX_FETCHERS)
+    if box_hit is None:
+        raise EndpointBlocked(f"{gid}: no box score source")
+    box = normalize.box(box_hit[1], gid)
+
+    pbp_hit = _payload(c, season, gid, source, PBP_FETCHERS)
+    if pbp_hit is None:
+        raise EndpointBlocked(f"{gid}: no play-by-play source")
+    if pbp_hit[0] == "stats_pbp":
+        ev = normalize.events_v3(pbp_hit[1], gid, box)
+    else:
+        ev = normalize.merge_live_subs(normalize.events_live(pbp_hit[1], gid))
+
+    rot_hit = _payload(c, season, gid, source, ROTATION_FETCHERS)
+    rot = stats_nba.rotation_frame(rot_hit[1], gid) if rot_hit else None
+    srcs = {"box": box_hit[0], "events": pbp_hit[0], "rotation": rot_hit[0] if rot_hit else None}
     return GameData(box, ev, rot, srcs)
 
 

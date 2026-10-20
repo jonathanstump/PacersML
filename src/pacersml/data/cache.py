@@ -1,9 +1,10 @@
-"""Parquet cache for raw per-game pulls: data/raw/{season}/{endpoint}/{game_id}.parquet.
-
-A game that is final never changes, so once cached it is never re-fetched.
+"""Caches. Raw API responses are stored as gzipped JSON exactly as received:
+data/raw/{season}/{source}_{endpoint}/{game_id}.json.gz, and normalized on every load, so a parser fix never
+needs a re-download. A game that is final never changes, so once cached it is never re-fetched.
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -17,22 +18,25 @@ PROCESSED = DATA / "processed"
 MANIFEST = DATA / "manifest.json"
 
 
-def raw_path(season: str, endpoint: str, game_id: str) -> Path:
-    return RAW / season / endpoint / f"{game_id}.parquet"
+def raw_path(season: str, key: str, game_id: str) -> Path:
+    return RAW / season / key / f"{game_id}.json.gz"
 
 
-def has_raw(season: str, endpoint: str, game_id: str) -> bool:
-    return raw_path(season, endpoint, game_id).exists()
+def find_raw(season: str, keys: list[str], game_id: str) -> tuple[str, dict] | None:
+    """First cached payload among `keys` (in preference order), as (key, payload)."""
+    for key in keys:
+        p = raw_path(season, key, game_id)
+        if p.exists():
+            with gzip.open(p, "rt", encoding="utf-8") as f:
+                return key, json.load(f)
+    return None
 
 
-def read_raw(season: str, endpoint: str, game_id: str) -> pd.DataFrame:
-    return pd.read_parquet(raw_path(season, endpoint, game_id))
-
-
-def write_raw(df: pd.DataFrame, season: str, endpoint: str, game_id: str) -> None:
-    p = raw_path(season, endpoint, game_id)
+def write_raw(payload: dict, season: str, key: str, game_id: str) -> None:
+    p = raw_path(season, key, game_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(p, index=False)
+    with gzip.open(p, "wt", encoding="utf-8") as f:
+        json.dump(payload, f)
 
 
 def write_processed(df: pd.DataFrame, name: str) -> Path:

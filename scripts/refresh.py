@@ -83,6 +83,8 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     clean_pg = pg[~pg.game_id.isin(q_ids)]
 
     per100 = season_per100(clean_pg)
+    # season-level checks compare against NBA's full-season totals; only enforce them on full seasons
+    partial = bool(args.game_ids or args.limit)
     team_tbls, player_tbls, ref_tables, code = [], [], {}, 0
     for st in sorted(clean_stints.season_type.unique()):
         ref = nba_reference(c, season, st)
@@ -91,7 +93,9 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
                                      games[games.season_type == st], ref["team_adv"])
         team_tbls.append(tt.assign(season_type=st))
         player_tbls.append(player_poss_check(per100[per100.season_type == st], ref["player_adv"]).assign(season_type=st))
-        if failed:
+        if failed and partial:
+            print("  (partial season: team-season possession check not enforced)")
+        elif failed:
             code = 4
             print(f"  !! {st}: team-season possession gap > 2% for "
                   f"{int(tt.over_tol.sum())} team(s) — treated as a parser bug (D1)")
@@ -103,12 +107,14 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     direction = pd.concat([gap_direction(t).assign(season_type=t.season_type.iloc[0])
                            for t in player_tbls if not t.empty] or [gap_direction(player_tbl)], ignore_index=True)
     for r in direction[direction.share_over.notna()].itertuples():
+        if partial:
+            break
         print(f"  player poss gaps {r.season_type} {r.measure}: over {r.over} / under {r.under} / equal {r.equal}"
               f" (share over {r.share_over:.0%}){'  -> outside 40/60, investigate (D7)' if r.investigate else ''}")
     n_flag = int(player_tbl.get("flag_avg", pd.Series(dtype=bool)).fillna(False).sum())
 
     rate = len(q_ids) / len(results)
-    if rate > QUARANTINE_ALARM:
+    if rate > QUARANTINE_ALARM and not partial:
         code = 2
         print(f"  !! quarantine alarm: {len(q_ids)}/{len(results)} games ({rate:.1%}) > {QUARANTINE_ALARM:.0%} (D3)")
 
