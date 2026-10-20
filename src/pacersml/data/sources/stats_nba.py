@@ -28,10 +28,17 @@ def game_log(c: Client, season: str, season_type: str) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=["game_id", "game_date", "home_team_id", "away_team_id"])
     df["is_home"] = df["MATCHUP"].str.contains(" vs. ")
+    # Neutral-site games (Cup semifinals, international games) list both teams as "@": no home row.
+    # Use the first row as the "home" label there; downstream only needs a consistent label per team.
+    n_home = df.groupby("GAME_ID").is_home.transform("sum")
+    df["neutral_site"] = n_home == 0
+    first = ~df.duplicated("GAME_ID")
+    df.loc[df.neutral_site, "is_home"] = first[df.neutral_site]
     home = df[df.is_home].set_index("GAME_ID")
     away = df[~df.is_home].set_index("GAME_ID")
     out = pd.DataFrame({"game_date": home["GAME_DATE"], "home_team_id": home["TEAM_ID"],
-                        "away_team_id": away["TEAM_ID"].reindex(home.index)})
+                        "away_team_id": away["TEAM_ID"].reindex(home.index),
+                        "neutral_site": home["neutral_site"]})
     return out.rename_axis("game_id").reset_index()
 
 

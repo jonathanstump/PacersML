@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from pacersml.data import cache, normalize
-from pacersml.data.http import Client, EndpointBlocked
+from pacersml.data.http import Client, EndpointBlocked, EndpointError
 from pacersml.data.per100 import player_game
 from pacersml.data.sources import cdn_nba, pbpstats, stats_nba
 from pacersml.data.stints import from_pbp, from_rotation, player_stints
@@ -14,7 +14,7 @@ from pacersml.data.validate import LINEUP_CHECKS, check_game, hard_failures
 
 PACERS = 1610612754
 SEASON_TYPE_BY_PREFIX = {"002": "regular", "004": "playoffs", "005": "play_in"}
-UNAVAILABLE = (EndpointBlocked, FileNotFoundError)
+UNAVAILABLE = (EndpointBlocked, EndpointError, FileNotFoundError)
 
 
 @dataclass
@@ -48,7 +48,10 @@ def game_list(c: Client, season: str, season_types: list[str], source: str) -> t
                 raise EndpointBlocked(f"no game list source answered for {season} {st}")
             g = pb[["game_id", "game_date", "home_team_id", "away_team_id"]]
         if pb is not None and not pb.empty:
-            g = g.merge(pb[["game_id", "pbpstats_home_poss", "pbpstats_away_poss"]], on="game_id", how="left")
+            # keyed by pbpstats' own team ids: its home/away can differ from ours at neutral sites
+            pb = pb.rename(columns={"home_team_id": "pbpstats_home_id", "away_team_id": "pbpstats_away_id"})
+            g = g.merge(pb[["game_id", "pbpstats_home_id", "pbpstats_away_id", "pbpstats_home_poss",
+                            "pbpstats_away_poss"]], on="game_id", how="left")
         frames.append(g.assign(season=season, season_type=st))
     games = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     if not games.empty:
@@ -122,7 +125,7 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
     gid, home, away = g.game_id, int(g.home_team_id), int(g.away_team_id)
     pb = {}
     if pd.notna(g.get("pbpstats_home_poss")):
-        pb = {home: int(g.pbpstats_home_poss), away: int(g.pbpstats_away_poss)}
+        pb = {int(g.pbpstats_home_id): int(g.pbpstats_home_poss), int(g.pbpstats_away_id): int(g.pbpstats_away_poss)}
 
     rebuild_attempted, info, first_fail = False, {}, set()
     if data.rotation is not None and not data.rotation.empty:

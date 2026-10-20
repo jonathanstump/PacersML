@@ -1,4 +1,18 @@
 {
-  "generated_utc": "2026-10-19T20:34:35+00:00",
-  "games": []
+  "generated_utc": "2026-10-20T03:08:55+00:00",
+  "games": [
+    {
+      "game_id": "0022500005",
+      "season": "2025-26",
+      "season_type": "regular",
+      "failed_checks": "plus_minus",
+      "residuals": "plus_minus=4",
+      "first_method": "pbp_rebuild",
+      "first_failed": "",
+      "rebuild_attempted": false,
+      "rebuild_result": "not_attempted",
+      "pacers_game": true,
+      "inferred_starters": "{'P1:1610612754': {'starters': [1627783, 1629614, 1630174, 1630543, 1631097], 'method': 'events'}, 'P1:1610612760': {'starters': [1628392, 1628983, 1629652, 1630598, 1631096], 'method': 'events'}, 'P2:1610612754': {'starters': [1629614, 1630167, 1630174, 1630643, 1641716], 'method': 'events'}, 'P2:1610612760': {'starters': [1628392, 1628983, 1631172, 1642349, 1642959], 'method': 'events'}, 'P3:1610612754': {'starters': [1627783, 1630174, 1630543, 1631097, 1641767], 'method': 'events'}, 'P3:1610612760': {'starters': [1628392, 1628983, 1629652, 1630598, 1631096], 'method': 'events'}, 'P4:1610612754': {'starters': [1627783, 1628396, 1630174, 1631097, 1641767], 'method': 'events'}, 'P4:1610612760': {'starters': [1628392, 1628983, 1630598, 1631172, 1642349], 'method': 'events'}, 'P5:1610612754': {'starters': [1627783, 1630167, 1631097, 1641716, 1641767], 'method': 'events'}, 'P5:1610612760': {'starters': [1628392, 1628983, 1629652, 1630598, 1642349], 'method': 'events'}, 'P6:1610612754': {'starters': [1627783, 1630167, 1631097, 1641716, 1641767], 'method': 'events'}, 'P6:1610612760': {'starters': [1628983, 1629652, 1630598, 1631096, 1642349], 'method': 'events'}}"
+    }
+  ]
 }

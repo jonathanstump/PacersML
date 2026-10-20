@@ -22,14 +22,20 @@ import requests
 
 TIMEOUT = 15
 SEASON = "2025-26"
-GAME_ID = "0022500001"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-STATS_HEADERS = {
-    "Host": "stats.nba.com", "User-Agent": UA, "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9", "Referer": "https://www.nba.com/", "Origin": "https://www.nba.com",
-    "x-nba-stats-origin": "stats", "x-nba-stats-token": "true",
+GAME_ID = "0022500005"  # IND, 2025-26
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+# Same header set as src/pacersml/data/http.py. The sec-* headers decide whether NBA answers (2026-10-20);
+# probes before that date ran without them (header_set "v1").
+HEADER_SET = "v2-sec-fetch"
+BROWSER = {
+    "User-Agent": UA, "Accept": "application/json, text/plain, */*", "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate", "Referer": "https://www.nba.com/", "Origin": "https://www.nba.com",
+    "sec-ch-ua": '"Google Chrome";v="141", "Chromium";v="141", "Not?A_Brand";v="24"',
+    "sec-ch-ua-mobile": "?0", "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "empty", "sec-fetch-mode": "cors", "sec-fetch-site": "same-site",
 }
-CDN_HEADERS = {"User-Agent": UA, "Accept": "application/json", "Referer": "https://www.nba.com/"}
+STATS_HEADERS = {**BROWSER, "Host": "stats.nba.com", "x-nba-stats-origin": "stats", "x-nba-stats-token": "true"}
+CDN_HEADERS = BROWSER
 DASH = {
     "Season": SEASON, "SeasonType": "Regular Season", "LeagueID": "00", "PerMode": "Per100Possessions",
     "MeasureType": "Base", "PaceAdjust": "N", "PlusMinus": "N", "Rank": "N", "LastNGames": "0", "Month": "0",
@@ -100,7 +106,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     rows = [probe_one(*p) for p in PROBES]
     out = {"label": args.label, "utc": now.isoformat(timespec="seconds"), "network": network_owner(),
-           "platform": platform.platform(), "timeout_s": TIMEOUT, "game_id": GAME_ID, "results": rows}
+           "platform": platform.platform(), "header_set": HEADER_SET, "timeout_s": TIMEOUT, "game_id": GAME_ID, "results": rows}
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)

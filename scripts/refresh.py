@@ -95,10 +95,13 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
             code = 4
             print(f"  !! {st}: team-season possession gap > 2% for "
                   f"{int(tt.over_tol.sum())} team(s) — treated as a parser bug (D1)")
-    team_tbl = pd.concat(team_tbls, ignore_index=True)
-    player_tbl = pd.concat(player_tbls, ignore_index=True)
+    # every game can be quarantined (e.g. a one-game smoke test): keep the tables, just empty
+    team_tbl = (pd.concat(team_tbls, ignore_index=True) if team_tbls
+                else pd.DataFrame(columns=["team_id", "poss_ours", "games", "poss_nba", "gap_pct", "over_tol"]))
+    player_tbl = (pd.concat(player_tbls, ignore_index=True) if player_tbls
+                  else pd.DataFrame(columns=["person_id", "gap_pct_avg", "flag_avg"]))
     direction = pd.concat([gap_direction(t).assign(season_type=t.season_type.iloc[0])
-                           for t in player_tbls if not t.empty], ignore_index=True)
+                           for t in player_tbls if not t.empty] or [gap_direction(player_tbl)], ignore_index=True)
     for r in direction[direction.share_over.notna()].itertuples():
         print(f"  player poss gaps {r.season_type} {r.measure}: over {r.over} / under {r.under} / equal {r.equal}"
               f" (share over {r.share_over:.0%}){'  -> outside 40/60, investigate (D7)' if r.investigate else ''}")
