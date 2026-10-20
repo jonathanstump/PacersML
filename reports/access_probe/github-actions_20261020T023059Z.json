@@ -1,0 +1,100 @@
+{
+  "label": "github-actions",
+  "utc": "2026-10-20T02:30:59+00:00",
+  "network": "AS8075 Microsoft Corporation",
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "timeout_s": 15,
+  "game_id": "0022500001",
+  "results": [
+    {
+      "source": "stats.nba.com",
+      "endpoint": "leaguegamelog",
+      "status": null,
+      "latency_s": 15.08,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "leaguedashplayerstats_per100",
+      "status": null,
+      "latency_s": 15.05,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "gamerotation",
+      "status": null,
+      "latency_s": 15.15,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "playbyplayv3",
+      "status": null,
+      "latency_s": 15.04,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    },
+    {
+      "source": "stats.nba.com",
+      "endpoint": "boxscoretraditionalv3",
+      "status": null,
+      "latency_s": 15.15,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "liveData_playbyplay",
+      "status": 403,
+      "latency_s": 0.15,
+      "bytes": 447,
+      "json": false,
+      "result": "refused",
+      "error": ""
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "liveData_boxscore",
+      "status": 403,
+      "latency_s": 0.04,
+      "bytes": 443,
+      "json": false,
+      "result": "refused",
+      "error": ""
+    },
+    {
+      "source": "cdn.nba.com",
+      "endpoint": "scheduleLeagueV2",
+      "status": 403,
+      "latency_s": 0.04,
+      "bytes": 425,
+      "json": false,
+      "result": "refused",
+      "error": ""
+    },
+    {
+      "source": "pbpstats.com",
+      "endpoint": "get-games",
+      "status": null,
+      "latency_s": 15.88,
+      "bytes": 0,
+      "json": false,
+      "result": "blocked",
+      "error": "timeout"
+    }
+  ]
+}
