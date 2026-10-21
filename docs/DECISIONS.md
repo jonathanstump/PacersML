@@ -93,9 +93,11 @@ request with timeouts counted as blocked, status code and latency recorded.
 | 2026-10-20 03:05 | laptop, hotspot (AS6167) | v2 (sec-* headers) | ok ×4, gamerotation 500 | ok ×3 | ok |
 | 2026-10-20 03:09 | GitHub Actions (AS8075) | v2 (sec-* headers) | timeout ×5 | 403 ×3 | ok |
 | 2026-10-20 03:45 | laptop, campus (AS3782) | v2 (sec-* headers) | ok ×5 (gamerotation 200) | ok ×3 | ok |
+| 2026-10-20 13:46 | GitHub Actions (AS8075), scheduled run 2 | v2 (sec-* headers) | timeout ×5 | 403 ×3 | ok |
+| 2026-10-20 19:30 | GitHub Actions (AS8075), scheduled run 3 | v2 (sec-* headers) | timeout ×5 | 403 ×3 | timeout |
 
-Scheduled GitHub runs 2 and 3 (v2, 2026-10-20 08:30 and 15:30 UTC) are still to run; they will be appended here.
-Given run 1, timeouts are expected, and the decision below does not wait on them.
+Scheduled runs 2 and 3 were set for 08:30 and 15:30 UTC; GitHub started them late (times above). The one-off
+schedule was removed from the workflow afterwards; manual runs still work.
 
 **Result (2026-10-20):** v2 headers fix laptop access on both networks (campus and hotspot); GitHub's network
 (AS8075, Microsoft cloud) is blocked from both NBA sources whatever the headers. Setup: **laptop refresh, GitHub
@@ -307,3 +309,37 @@ later) had marked both hosts down for the rest of the run, cascading into ~2,300
 fails a whole call triggers a 5-minute pause and a re-probe (up to 3 times), then the run stops cleanly. Rotation
 500s get a longer backoff, a 10-minute cooldown instead of a run-long switch-off, and a second pass at the end of
 each season.
+
+---
+
+## D12 — Backfill pace, chunks, and gamerotation timeouts (2026-10-21, Phase 1)
+
+**What happened:** the second backfill (2026-10-20, hybrid stints) was stopped by Claude Code at ~595 of 1,320
+2024-25 games because the laptop ran low on memory. Before that:
+- **NBA stopped answering after ~260 new games**, like the first run at ~300: both hosts at once, at 1.5–2.0 s per
+  request. After a 5-minute pause the preflight probe passed on its fixed test game (0022500005), and the very next
+  real game failed again. The same game (0022400562) downloaded normally ~21 hours later.
+- **gamerotation mostly fails:** 8 of ~595 cached games had a rotation file. A direct test (2026-10-21 03:00 UTC,
+  3.5 s apart, 8 games): 2 × 200 (< 1 s each), 1 × 500, 5 × timeout at 30 s. A timeout marked all of
+  stats.nba.com as down in the client, so one slow rotation call could knock out box-score fetches for the next game.
+- The run kept every game's raw frames in memory until the season ended.
+
+**Options considered** (Claude's recommendations, accepted as a set by Jonathan: "do everything you recommend"):
+slower pace + chunks; re-probe on a real, uncached game; test gamerotation separately before pulling more; less
+memory per run.
+
+**Decision:**
+- **Pace: 3.5–4.0 s between requests** (replaces D10's 1.5–2.0 s).
+- **Chunks:** `scripts/backfill.py` downloads at most **200 games that need the network** per run
+  (`refresh.py --max-fetch 200`, download only), rests **30 minutes**, repeats until nothing is left, then runs one
+  normal refresh that processes everything from the cache. Each chunk is a separate process.
+- **Re-probe on the game that failed** after a mid-run outage, with escalating pauses of **5, 15, 30 minutes**,
+  then the run stops. The start-of-run preflight keeps the fixed test game (D10).
+- **gamerotation:** 10 s timeout, 2 tries per call; a timeout counts against gamerotation only, never the whole
+  host. Each game gets at most **2 gamerotation calls in total, across runs**, recorded in
+  `data/raw/{season}/rotation_attempts.json`; after that the game uses the PBP rebuild (D11).
+- **Memory:** a run keeps each game's results, not its raw frames.
+
+**Open, for after the download:** if gamerotation coverage stays near the ~25% seen in the test, most games go to
+the PBP rebuild, whose starter inference failed on the first backfill, and the D3 1% alarm will likely fire.
+Those numbers come back to Jonathan before anything is changed.

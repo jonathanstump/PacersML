@@ -52,8 +52,11 @@ def pbp_v3(c: Client, game_id: str) -> dict:
 
 
 def rotation(c: Client, game_id: str) -> dict:
-    # fails intermittently per game (500): longer backoff, 5 s then 10 s, before giving up on this call
-    return c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"}, backoff=5.0)
+    # Fails per game: 500s, or hangs past 30 s (2026-10-21: 2 of 8 games answered, each in < 1 s). Short timeout,
+    # one retry, and a timeout counts against gamerotation only, never the whole host (D12). refresh.py gives each
+    # game up to ROTATION_TRIES calls across runs.
+    return c.stats("gamerotation", {"GameID": game_id, "LeagueID": "00"}, backoff=5.0,
+                   timeout=10.0, retries=2, host_level=False)
 
 
 def rotation_frame(payload: dict, game_id: str) -> pd.DataFrame:

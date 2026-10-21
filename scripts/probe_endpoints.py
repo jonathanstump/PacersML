@@ -5,7 +5,8 @@ stats.nba.com tends to hang rather than refuse when it blocks an IP range.
 
 Writes reports/access_probe/{label}_{utc timestamp}.json and, under GitHub Actions, a table in the job summary.
 Only depends on `requests` so the workflow installs nothing else. scripts/refresh.py imports `run` as a preflight
-and stops if any endpoint in REQUIRED fails (D10).
+and stops if any endpoint in REQUIRED fails (D10). After a mid-run outage it re-probes with the game that failed
+(`game_id`): the fixed test game is served from NBA's CDN cache, so it can answer while new games are refused (D12).
 
     python scripts/probe_endpoints.py --label laptop
 """
@@ -44,29 +45,31 @@ DASH = {
     "Outcome": "", "SeasonSegment": "", "VsConference": "", "VsDivision": "", "TeamID": "0",
 }
 
-PROBES = [
-    # (source, endpoint label, url, params, headers)
+def probes(game_id: str = GAME_ID) -> list[tuple]:
+    """(source, endpoint label, url, params, headers) for every endpoint; per-game endpoints use `game_id`."""
+    season = f"20{game_id[3:5]}-{int(game_id[3:5]) + 1:02d}"
+    return [
     ("stats.nba.com", "leaguegamelog", "https://stats.nba.com/stats/leaguegamelog",
      {"Counter": 1000, "DateFrom": "", "DateTo": "", "Direction": "ASC", "LeagueID": "00",
-      "PlayerOrTeam": "T", "Season": SEASON, "SeasonType": "Regular Season", "Sorter": "DATE"}, STATS_HEADERS),
+      "PlayerOrTeam": "T", "Season": season, "SeasonType": "Regular Season", "Sorter": "DATE"}, STATS_HEADERS),
     ("stats.nba.com", "leaguedashplayerstats_per100", "https://stats.nba.com/stats/leaguedashplayerstats",
-     DASH, STATS_HEADERS),
+     {**DASH, "Season": season}, STATS_HEADERS),
     ("stats.nba.com", "gamerotation", "https://stats.nba.com/stats/gamerotation",
-     {"GameID": GAME_ID, "LeagueID": "00"}, STATS_HEADERS),
+     {"GameID": game_id, "LeagueID": "00"}, STATS_HEADERS),
     ("stats.nba.com", "playbyplayv3", "https://stats.nba.com/stats/playbyplayv3",
-     {"GameID": GAME_ID, "StartPeriod": 0, "EndPeriod": 0}, STATS_HEADERS),
+     {"GameID": game_id, "StartPeriod": 0, "EndPeriod": 0}, STATS_HEADERS),
     ("stats.nba.com", "boxscoretraditionalv3", "https://stats.nba.com/stats/boxscoretraditionalv3",
-     {"GameID": GAME_ID, "StartPeriod": 0, "EndPeriod": 0, "StartRange": 0, "EndRange": 0, "RangeType": 0},
+     {"GameID": game_id, "StartPeriod": 0, "EndPeriod": 0, "StartRange": 0, "EndRange": 0, "RangeType": 0},
      STATS_HEADERS),
     ("cdn.nba.com", "liveData_playbyplay",
-     f"https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_{GAME_ID}.json", None, CDN_HEADERS),
+     f"https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_{game_id}.json", None, CDN_HEADERS),
     ("cdn.nba.com", "liveData_boxscore",
-     f"https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{GAME_ID}.json", None, CDN_HEADERS),
+     f"https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{game_id}.json", None, CDN_HEADERS),
     ("cdn.nba.com", "scheduleLeagueV2",
      "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json", None, CDN_HEADERS),
     ("pbpstats.com", "get-games", "https://api.pbpstats.com/get-games/nba",
-     {"Season": SEASON, "SeasonType": "Regular Season"}, {"User-Agent": UA}),
-]
+     {"Season": season, "SeasonType": "Regular Season"}, {"User-Agent": UA}),
+    ]
 # A weekly refresh cannot produce complete data without these. gamerotation has a fallback (PBP rebuild),
 # leaguedash only feeds cross-checks, pbpstats only the reported possession comparison.
 REQUIRED = {"leaguegamelog", "boxscoretraditionalv3", "liveData_playbyplay"}
@@ -101,15 +104,15 @@ def network_owner() -> str:
         return "unknown"
 
 
-def run(label: str, out_dir: str | Path = "reports/access_probe") -> dict:
+def run(label: str, out_dir: str | Path = "reports/access_probe", game_id: str = GAME_ID) -> dict:
     """Probe every endpoint, write the JSON report, print the table. Returns the report with `failed_required`."""
     now = datetime.now(timezone.utc)
     rows = []
-    for p in PROBES:
+    for p in probes(game_id):
         rows.append(probe_one(*p))
         time.sleep(1.5)  # same polite pace as the pipeline
     out = {"label": label, "utc": now.isoformat(timespec="seconds"), "network": network_owner(),
-           "platform": platform.platform(), "header_set": HEADER_SET, "timeout_s": TIMEOUT, "game_id": GAME_ID,
+           "platform": platform.platform(), "header_set": HEADER_SET, "timeout_s": TIMEOUT, "game_id": game_id,
            "results": rows}
     out["failed_required"] = sorted(r["endpoint"] for r in rows if r["endpoint"] in REQUIRED and r["result"] != "ok")
 

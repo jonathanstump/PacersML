@@ -5,11 +5,6 @@ name: Access probe
 # and prints a results table in the run summary.
 on:
   workflow_dispatch:
-  # Week-one probe runs 2 and 3 (D4): 2026-10-20 at 08:30 and 15:30 UTC.
-  # Remove after they have run, or these fire again next Oct 20.
-  schedule:
-    - cron: "30 8 20 10 *"
-    - cron: "30 15 20 10 *"
 
 jobs:
   probe:

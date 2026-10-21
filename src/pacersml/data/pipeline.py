@@ -85,8 +85,9 @@ def _payload(c: Client, season: str, gid: str, source: str, fetchers) -> tuple[s
     return None
 
 
-def load_game(c: Client, season: str, gid: str, source: str) -> GameData:
-    """Raw payloads (cached or fetched), normalized here. Raises EndpointBlocked if no box or PBP source answers."""
+def load_game(c: Client, season: str, gid: str, source: str, fetch_rotation: bool = True) -> GameData:
+    """Raw payloads (cached or fetched), normalized here. Raises EndpointBlocked if no box or PBP source answers.
+    fetch_rotation=False: use a cached rotation file if there is one, never request it."""
     box_hit = _payload(c, season, gid, source, BOX_FETCHERS)
     if box_hit is None:
         raise EndpointBlocked(f"{gid}: no box score source")
@@ -100,7 +101,8 @@ def load_game(c: Client, season: str, gid: str, source: str) -> GameData:
     else:
         ev = normalize.merge_live_subs(normalize.events_live(pbp_hit[1], gid))
 
-    rot_hit = _payload(c, season, gid, source, ROTATION_FETCHERS)
+    rot_hit = (_payload(c, season, gid, source, ROTATION_FETCHERS) if fetch_rotation
+               else cache.find_raw(season, [k for k, _ in ROTATION_FETCHERS], gid))
     rot = stats_nba.rotation_frame(rot_hit[1], gid) if rot_hit else None
     srcs = {"box": box_hit[0], "events": pbp_hit[0], "rotation": rot_hit[0] if rot_hit else None}
     return GameData(box, ev.assign(pbp_source=pbp_hit[0]), rot, srcs)

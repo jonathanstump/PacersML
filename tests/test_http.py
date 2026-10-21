@@ -58,3 +58,15 @@ def test_refusal_blocks_host(client, monkeypatch):
     with pytest.raises(EndpointBlocked):
         client.cdn("liveData/playbyplay/playbyplay_0022500005.json")
     assert "cdn.nba.com" in client.blocked_hosts
+
+
+def test_endpoint_level_timeout_does_not_block_host(client, monkeypatch):
+    def hang(*a, **k):
+        raise http.requests.Timeout()
+    monkeypatch.setattr(client.session, "get", hang)
+    with pytest.raises(EndpointError):
+        client.stats("gamerotation", {}, retries=2, host_level=False)
+    assert client.blocked_hosts == set() and client.n_requests == 2
+    with pytest.raises(EndpointBlocked):                            # same hang on a host-level endpoint
+        client.stats("boxscoretraditionalv3", {})
+    assert "stats.nba.com" in client.blocked_hosts

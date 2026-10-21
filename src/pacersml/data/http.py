@@ -47,8 +47,9 @@ class EndpointError(RuntimeError):
 
 
 class Client:
-    # 1.5-2.0 s between requests (D10): a working fingerprint gets banned by pulling fast, not by pulling.
-    def __init__(self, timeout: float = 30.0, min_interval: float = 1.5, retries: int = 3,
+    # 3.5-4.0 s between requests (D12; was 1.5-2.0, D10): at that pace NBA stopped answering after ~260-300 new
+    # games, twice. A working fingerprint gets banned by pulling fast, not by pulling.
+    def __init__(self, timeout: float = 30.0, min_interval: float = 3.5, retries: int = 3,
                  cooldown_after: int = 5, cooldown_s: float = 600.0):
         self.timeout = timeout
         self.min_interval = min_interval
@@ -60,6 +61,7 @@ class Client:
         self.blocked_hosts: set[str] = set()
         self.cooling_until: dict[str, float] = {}
         self._server_errors: dict[str, int] = {}
+        self.n_requests = 0  # refresh.py counts games that needed the network against its --max-fetch budget
 
     def _throttle(self) -> None:
         wait = self.min_interval + random.uniform(0, 0.5) - (time.monotonic() - self._last)
@@ -68,20 +70,25 @@ class Client:
         self._last = time.monotonic()
 
     def get_json(self, url: str, params: dict | None = None, headers: dict | None = None, host: str = "",
-                 endpoint: str = "", backoff: float = 2.0) -> dict:
+                 endpoint: str = "", backoff: float = 2.0, timeout: float | None = None,
+                 retries: int | None = None, host_level: bool = True) -> dict:
+        """host_level=False: a timeout counts against this endpoint only (EndpointError + cooldown), not the
+        whole host. For gamerotation, which times out per game while every other stats endpoint answers (D12)."""
         endpoint = endpoint or url
+        retries = retries or self.retries
         if host in self.blocked_hosts:
             raise EndpointBlocked(f"{host} marked down")
         if time.monotonic() < self.cooling_until.get(endpoint, 0):
             raise EndpointError(f"{endpoint} cooling down after repeated server errors")
         last_err: Exception | None = None
         server_error = False
-        for attempt in range(self.retries):
+        for attempt in range(retries):
             self._throttle()
+            self.n_requests += 1
             try:
-                r = self.session.get(url, params=params, headers=headers, timeout=self.timeout)
+                r = self.session.get(url, params=params, headers=headers, timeout=timeout or self.timeout)
             except (requests.Timeout, requests.ConnectionError) as e:
-                last_err, server_error = e, False
+                last_err, server_error = e, not host_level
             else:
                 if r.status_code == 200:
                     self._server_errors[endpoint] = 0
@@ -91,7 +98,7 @@ class Client:
                 # a fast 5xx is the endpoint failing, not the host blocking us
                 server_error = r.status_code >= 500 and r.elapsed.total_seconds() < self.timeout
                 last_err = RuntimeError(f"HTTP {r.status_code} {r.url}")
-            if attempt + 1 < self.retries:
+            if attempt + 1 < retries:
                 time.sleep(backoff * 2 ** attempt)
         if server_error:
             n = self._server_errors.get(endpoint, 0) + 1
@@ -99,13 +106,13 @@ class Client:
             if n >= self.cooldown_after:
                 self.cooling_until[endpoint] = time.monotonic() + self.cooldown_s
                 self._server_errors[endpoint] = 0
-            raise EndpointError(f"{endpoint}: {last_err} after {self.retries} tries ({n} calls in a row)")
+            raise EndpointError(f"{endpoint}: {last_err} after {retries} tries ({n} calls in a row)")
         self.blocked_hosts.add(host)
         raise EndpointBlocked(f"{host}: {last_err}")
 
-    def stats(self, endpoint: str, params: dict, backoff: float = 2.0) -> dict:
+    def stats(self, endpoint: str, params: dict, backoff: float = 2.0, **kw) -> dict:
         return self.get_json(f"https://stats.nba.com/stats/{endpoint}", params, STATS_HEADERS, "stats.nba.com",
-                             f"stats/{endpoint}", backoff)
+                             f"stats/{endpoint}", backoff, **kw)
 
     def cdn(self, path: str) -> dict:
         # endpoint key drops the game id: liveData/boxscore/boxscore_0022500005.json -> cdn/liveData/boxscore/boxscore
