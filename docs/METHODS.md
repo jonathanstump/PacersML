@@ -58,7 +58,8 @@ Also recorded for later rebound percentages: `live_miss` (missed FG or missed *l
 - **Hybrid (primary).** stats.nba.com `gamerotation` gives each period's starting five (who is on the floor at the
   period start); every play-by-play substitution after that swaps one player. Used when the rotation file gives
   exactly five starters per team in every period. gamerotation fails per game (500s and hangs), so each game
-  gets at most 2 calls across runs (D12); a game without a rotation file after that uses the rebuild.
+  gets at most 2 calls across runs (D12), made by a rotation-only pass after the download (D13); a game without a
+  rotation file after that uses the rebuild.
 - **PBP rebuild (fallback, only when rotation data is missing).** Each period's starting five is inferred, then
   every substitution swaps one player. Starters are inferred as: anyone whose first appearance in the period
   is anything other than being subbed in; if fewer than 5, fill from the previous period's closing five; if still

@@ -2,8 +2,9 @@
 
 NBA stopped answering twice after ~260-300 new games pulled in one sitting, so the backfill downloads at most
 CHUNK games that need the network per run (`refresh.py --max-fetch`), rests BREAK_S, and repeats until nothing is
-left to fetch. Each chunk is its own process, so memory is released between chunks. Then the normal refresh runs
-from the cache (validation, quarantine, per-100, freezing).
+left to fetch. Each chunk is its own process, so memory is released between chunks. Then scripts/rotation_pass.py
+makes the gamerotation calls the chunks skipped (D13), and the normal refresh runs from the cache (validation,
+quarantine, per-100, freezing).
 
     python -u scripts/backfill.py                      # all three seasons
     python -u scripts/backfill.py --chunk 150 --break-s 2700
@@ -49,7 +50,12 @@ def main() -> int:
         print(f"##### chunk {n} done; resting {args.break_s}s", flush=True)
         time.sleep(args.break_s)
 
-    print(f"\n##### everything downloaded; processing refresh @ {stamp()}", flush=True)
+    print(f"\n##### everything downloaded; rotation pass @ {stamp()}", flush=True)
+    code = subprocess.call([sys.executable, "-u", str(ROOT / "scripts" / "rotation_pass.py"), *seasons])
+    if code != 0:
+        print(f"##### rotation pass exited {code}; stopping the backfill", flush=True)
+        return code
+    print(f"\n##### processing refresh @ {stamp()}", flush=True)
     return subprocess.call(REFRESH + seasons)
 
 

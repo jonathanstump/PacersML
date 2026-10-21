@@ -266,7 +266,11 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
             if df is not None:
                 df.to_parquet(out / f"nba_{k}_{st}.parquet", index=False)
 
-    if season in TRAINING_SEASONS and not missing and not args.game_ids and not args.limit:
+    pending_rot = [gid for gid in no_rot.game_id if ledger.get(gid, 0) < ROTATION_TRIES] if use_rotation else []
+    if season in TRAINING_SEASONS and pending_rot and not partial:
+        print(f"  not frozen: {len(pending_rot)} games still have gamerotation tries left (run "
+              f"scripts/rotation_pass.py, then refresh again) (D13)")
+    if season in TRAINING_SEASONS and not missing and not partial and not pending_rot:
         m = cache.load_manifest()
         m["seasons"][season] = {
             "frozen": True, "frozen_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),

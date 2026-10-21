@@ -343,3 +343,23 @@ memory per run.
 **Open, for after the download:** if gamerotation coverage stays near the ~25% seen in the test, most games go to
 the PBP rebuild, whose starter inference failed on the first backfill, and the D3 1% alarm will likely fire.
 Those numbers come back to Jonathan before anything is changed.
+
+---
+
+## D13 — Rotation-only pass (2026-10-21, Phase 1)
+
+**What happened:** during the chunked download, gamerotation's 10-minute cooldown (after 5 failures in a row)
+meant cached games went by while it was cooling, with no call. On 2026-10-21 15:18 UTC: 2024-25 had all 1,320 games
+downloaded, 115 with a rotation file, 86 with at least one failed call, and ~1,120 never called. 2025-26: 321
+downloaded, 5 with rotation, 31 failed at least once.
+
+**Decision (Jonathan, "build the rotation-only pass"):** `scripts/rotation_pass.py` makes the skipped calls after
+the download finishes, before processing:
+- one request per try, same 3.5–4.0 s pace, same limit of 2 tries per game in total (shared ledger, D12); rounds,
+  so a failed game's second try comes at least one round later;
+- no cooldown; instead, after 10 failures in a row it checks that game's box score on stats.nba.com. Box fails too
+  → host outage: those tries are taken back off the ledger and redone after a pause (5, 15, 30 min, then stop).
+  Box answers → they were gamerotation's own failures and count;
+- rests 30 min after every 400 requests;
+- `refresh.py` does not freeze a training season while any of its games still has rotation tries left.
+`scripts/backfill.py` now runs download chunks → rotation pass → processing refresh.
