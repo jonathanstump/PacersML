@@ -93,6 +93,9 @@ def load_game(c: Client, season: str, gid: str, source: str, fetch_rotation: boo
     if box_hit is None:
         raise EndpointBlocked(f"{gid}: no box score source")
     box = normalize.box(box_hit[1], gid)
+    if box.empty:  # NBA answered before the box was filled in (2026-27: 7 such games cached); don't keep it
+        cache.raw_path(season, box_hit[0], gid).unlink(missing_ok=True)
+        raise EndpointError(f"{gid}: empty box score (cached copy removed, fetched again next run)")
 
     pbp_hit = _payload(c, season, gid, source, PBP_FETCHERS)
     if pbp_hit is None:

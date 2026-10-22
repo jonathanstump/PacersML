@@ -522,3 +522,29 @@ jump ball), stopping at any free throw or technical foul (subs between free thro
 at dead balls). Code: `normalize.reorder_same_second_subs`, `refresh.py --reorder-subs`.
 Acceptance test: run it with `--no-write` against the D16 step-1 baseline. Adopt only if it fixes games and
 breaks none. If adopted, it's logged as a D8 amendment with this reasoning.
+
+**Trial result (2026-10-22, `data/refresh_reorder_trial.log`, `--no-write` vs the D17 baseline): not adopted.**
+
+| season | games with subs moved | subs moved | fixed | regressed |
+|---|---|---|---|---|
+| 2024-25 | 336 | 666 | 1 (0042400306) | 49 |
+| 2025-26 | 352 | 690 | 0 | 53 |
+
+Under the acceptance rule (fixes games, breaks none), the rule is rejected. D8 is unchanged and 0042400306 stays
+quarantined. The code stays behind the off-by-default `--reorder-subs` flag; the 102 regressed games are listed
+in the log.
+
+---
+
+## D18 — Possession cross-checks compare the same games as NBA (2026-10-22, Phase 1, bug fix)
+
+The first full-season runs (D16 step 1, 1b) exited 4: 2024-25 had 14 regular-season teams and 2 playoff teams
+more than 2% off NBA's team POSS; 2025-26 had 3 regular-season teams and 1 play-in team. Player-season gaps were
+almost all under NBA's (2024-25 regular: 2 over, 567 under). Cause: our totals left out quarantined games and
+NBA's season totals include them. A team with 2 quarantined games out of 82 is ~2.4% under from that alone.
+Fix: the team and player possession cross-checks use every processed game, quarantined ones included.
+Possessions come from the play-by-play, not from the lineups. The per-100 tables still use clean games only.
+D1's 2% tolerance is unchanged. If a team is still over 2% after the fix, the gap is real and gets investigated.
+
+Also fixed: 7 games of 2026-27 had empty box scores cached (NBA answered before the box was filled in), which
+crashed the run. An empty box is now removed from the cache and fetched again on the next run.

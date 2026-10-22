@@ -240,7 +240,7 @@ in the run summary and in `site_export/quarantine.json`.
   logic doesn't hold, and those checks quarantine the game anyway.
 - Log order within one second is NBA's, not the true order. A sub logged before a foul in the same second moves
   that foul's free throws to the wrong lineup. A trial rule that moves such subs after live-play events
-  (`refresh.py --reorder-subs`, D17) is not adopted until it has been tested against the baseline.
+  (`refresh.py --reorder-subs`, D17) fixed 1 game and broke 102 in testing, so it is not used.
 
 **Questions you should be able to answer.**
 1. Why is plus-minus the strongest single check on lineups?

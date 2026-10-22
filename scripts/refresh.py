@@ -204,16 +204,20 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     clean_pg = pg[~pg.game_id.isin(q_ids)]
 
     per100 = season_per100(clean_pg)
+    # The possession cross-checks compare with NBA's season totals, which include every game, so they use every
+    # processed game, quarantined ones too: possessions come from the play-by-play, not from the lineups
+    # (2026-10-22: comparing clean games only put 14 teams > 2% under NBA, every gap from missing games).
+    per100_all = season_per100(pg)
     # season-level checks compare against NBA's full-season totals; only enforce them on full seasons
     partial = bool(args.game_ids or args.limit)
     team_tbls, player_tbls, ref_tables, code = [], [], {}, 0
     for st in sorted(clean_stints.season_type.unique()):
         ref = nba_reference(c, season, st)
         ref_tables[st] = ref
-        tt, failed = team_poss_check(clean_stints[clean_stints.season_type == st],
+        tt, failed = team_poss_check(stints[stints.season_type == st],
                                      games[games.season_type == st], ref["team_adv"])
         team_tbls.append(tt.assign(season_type=st))
-        player_tbls.append(player_poss_check(per100[per100.season_type == st], ref["player_adv"]).assign(season_type=st))
+        player_tbls.append(player_poss_check(per100_all[per100_all.season_type == st], ref["player_adv"]).assign(season_type=st))
         if failed and partial:
             print("  (partial season: team-season possession check not enforced)")
         elif failed:
