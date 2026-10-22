@@ -46,6 +46,9 @@ only the championship game (prefix 006) doesn't, and it is not pulled.
 
 ## D3 — Games that fail stint validation (2026-10-19, Phase 1)
 
+> **Amended by D14** (2026-10-22): the 1% alarm applies to hybrid-built games only; rebuild failures are listed
+> and counted, no alarm.
+
 **Decision:** If stints built from `gamerotation` fail a hard check, rebuild that game's stints from
 play-by-play substitutions plus period-starter inference and re-run the checks. If it still fails, quarantine it.
 
@@ -188,6 +191,9 @@ analysis anyway, since the Phase 2 archetype model applies a minutes cutoff.
 ---
 
 ## D8 — Free-throw attribution in stints (2026-10-20, Phase 1)
+
+> **Amended by D14** (2026-10-22): plus-minus is strict except that a gap of ±2 or less passes, with a note,
+> when minutes pass and the game has a substitution in the same second as a technical free throw.
 
 **Decision:**
 - A free-throw trip (shooting fouls, and-ones, flagrant and clear-path FTs) is credited to the lineup on the floor
@@ -364,3 +370,47 @@ the download finishes, before processing:
 - `refresh.py` does not freeze a training season while any of its games still has rotation tries left.
 `scripts/backfill.py` now runs download chunks → rotation pass → processing refresh.
 Download chunks no longer call gamerotation at all (2026-10-22); the rotation pass makes every call.
+
+---
+
+## D14 — What the remaining validation failures mean, and which games are kept (2026-10-22, Phase 1)
+
+**What happened:** after the rebuild fix (between-period subs, commit 010f967), an offline re-run of both
+training seasons from the cache had 135 games failing (60 of 1,320 in 2024-25, 75 of 1,321 in 2025-26), in four
+groups: A, play-by-play counts vs box off by 1–2 with lineups right (89); B, plus-minus only, off by 1–3 (20);
+C, lineup failures (24); D, team points (2).
+
+**Options considered:** for A, strict / report-only for gaps ≤ 2 / report-only at any size; for B, strict /
+±2 / test other technical-FT rules; for the alarm, keep 1% / raise to 2% / per builder.
+
+**Decision (Jonathan):**
+- **Group A:** a player stat gap of 2 or less passes, with a note, when minutes, plus-minus and the **team total
+  for that stat** all match: the stat moved between teammates across NBA's two sources (Murray/Westbrook rebound,
+  0022400208), so team-level numbers (H1 corner-3 and rim rates) are unaffected. A team total that doesn't match
+  means an event is missing, not misattributed: quarantined. Reason: the lineups in these games are right, and
+  quarantining throws away correct stints RAPM needs.
+- **Group B:** plus-minus gap ±2 or less passes, with a note, only when minutes pass and the game has a
+  substitution in the same second as a technical free throw (NBA's box contradicts itself there: in 0022400827 it
+  charges the technical FT to the player going out, in 0022401078 to the player coming in, so no attribution rule
+  fits both). Any other plus-minus gap, and the game off by 3, stays quarantined: a gap with no known cause is
+  what the check exists to catch. Testing more technical rules (option 3) skipped.
+- **Alarm (D3 amended):** 1% alarm on hybrid games only, where a breach means a real bug. Rebuild games (missing
+  rotation data) are expected to fail more often: no alarm; each failure listed, games lost per season reported.
+  A single 2% threshold was rejected because rebuild failures could hide a hybrid regression.
+- **Group D:** strict (PBP scoring ≠ box means the stints are wrong).
+- Games kept with a note go to `kept_with_notes.parquet` and the `kept_with_notes` list in
+  `site_export/quarantine.json`.
+
+**Checks Jonathan asked for (numbers, 2026-10-22, cache at that time):**
+- The 3 Group A games "off by 4" (0022500109, 0022500188, 0022500788) are 4 summed over two players: one teammate
+  +2, another −2 (two free throws, a made 2, a made 2 plus a rebound). Team totals match; kept with notes.
+- Group A after the team-total rule: 44 kept with notes, 45 quarantined (team total differs).
+- Group B: 14 of the 20 games have a substitution in the same second as a technical FT; 13 of those are kept,
+  1 (0022400896, off by 3) quarantined. The other 6 have no such substitution and stay quarantined, unexplained.
+- Group C, box-minutes starter repair (tried at Jonathan's request): recovered **0** games beyond the fixes below,
+  so it was not kept. The remaining lineup failures are mostly pairs (one player over by X seconds, a teammate
+  short by X), i.e. a mid-period substitution missing or logged for the wrong player, not a missing starter.
+- Group C, two bug fixes in starter inference (engineering): a technical foul or an ejection no longer counts as
+  evidence that a player started a period, since bench players get them (0022400664, a Pacers game: a bench double
+  technical made a sixth starter; 0022501127: an ejection from the bench). 7 of the 22 rebuild lineup failures pass
+  after these fixes.

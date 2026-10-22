@@ -119,3 +119,13 @@ def test_sub_logged_before_period_start_row_is_applied():
     p2 = stints[stints.period == 2]
     assert all(len(s) == 5 for s in stints.home_ids) and all(len(s) == 5 for s in stints.away_ids)
     assert all(16 in s and 14 not in s for s in p2.home_ids)
+
+
+def test_bench_technical_and_ejection_are_not_starter_evidence():
+    rows = [dict(etype="period_start")]
+    rows += [dict(elapsed=10 + i, team_id=HOME, person_id=p, etype="rebound") for i, p in enumerate([11, 12, 13, 14, 15])]
+    rows += [dict(elapsed=30, team_id=HOME, person_id=16, etype="foul", foul_type="technical", technical=True),
+             dict(elapsed=30, team_id=HOME, person_id=16, etype="other", desc="Ejection P. Sixteen"),
+             dict(elapsed=720, etype="period_end")]
+    starters, _ = infer_starters(ev(rows), HOME, box()[box().team_id == HOME], set())
+    assert starters == {11, 12, 13, 14, 15}

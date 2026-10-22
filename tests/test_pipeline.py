@@ -95,3 +95,31 @@ def test_foul_split_by_side_and_drawn():
     assert fc.loc[24, "charges_drawn"] == 1 and fc.loc[24, "off_fouls_drawn"] == 1
     v3 = foul_counts(assign_possessions(ev(rows)).assign(pbp_source="stats_pbp"), full_box())
     assert v3.fouls_drawn.isna().all()
+
+
+def test_count_moved_between_teammates_is_kept_with_note_but_missing_event_is_not():
+    b = full_box()
+    b.loc[b.person_id == 12, "dreb"] = 0
+    b.loc[b.person_id == 13, "dreb"] = 1                             # rebound credited to a teammate in the box
+    r = process_game(game(), GameData(b, game_rows(), rotation()))
+    assert r.quarantine is None and r.kept_note["checks"] == "pbp_counts"
+    b.loc[b.person_id == 13, "dreb"] = 0                             # team total now differs: an event is missing
+    r = process_game(game(), GameData(b, game_rows(), rotation()))
+    assert r.quarantine is not None and "pbp_counts" in r.quarantine["failed_checks"]
+
+
+def test_plus_minus_note_needs_a_sub_at_a_technical_ft():
+    from toy import ev
+
+    from pacersml.data.validate import sub_at_technical_ft
+    rows = [dict(etype="period_start"),
+            dict(elapsed=30, team_id=AWAY, person_id=21, etype="foul", technical=True, foul_type="technical"),
+            dict(elapsed=30, team_id=HOME, etype="sub", in_id=16, out_id=14),
+            dict(elapsed=30, team_id=HOME, person_id=11, etype="ft", technical=True, value=1, made=True, points=1)]
+    assert sub_at_technical_ft(ev(rows))
+    rows[2]["elapsed"] = 40
+    assert not sub_at_technical_ft(ev(rows))
+    b = full_box()
+    b.loc[b.person_id == 14, "plus_minus"] += 1                      # off by 1, but no technical FT in the game
+    r = process_game(game(), GameData(b, game_rows(), rotation()))
+    assert r.quarantine is not None and "plus_minus" in r.quarantine["failed_checks"]

@@ -5,9 +5,13 @@ Per-game checks (hard = a failure quarantines the game, D3/D11):
     floor_five    every stint has exactly 5 players per team                                hard, lineup
     game_seconds  sum of stint seconds == 2880 + 300 * OT periods (± 1 s)                   hard, lineup
     plus_minus    player (pts for - pts against) over his stints == box +/-                  hard, lineup
+                  exception (D8 amended, D14): |gap| <= 2 passes, noted, when minutes pass and the game has
+                  a substitution in the same second as a technical free throw (NBA's box is inconsistent there)
     team_points   PBP points per team == box points per team                                hard
-    pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb, pf)
-                  == box score, exactly (D5)                                                  hard
+    pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb, pf) vs box (D5).
+                  Passes, noted, when every player gap is <= 2 and every team total matches: the stat moved
+                  between teammates across NBA's two sources (D14). Otherwise                 hard
+A passing check with `noted` set puts the game in the "kept with notes" list instead of quarantine.
     poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
 Season checks:
     team-season possessions vs NBA team POSS: gap > 2% fails the season (D1)
@@ -28,12 +32,22 @@ COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb", 
 POSS_TOL = 0.02            # D1 / D5
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
 DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
-QUARANTINE_ALARM = 0.01    # D3
+QUARANTINE_ALARM = 0.01    # D3, amended D14: applies to hybrid games only
+COUNT_NOTE_MAX = 2         # D14: player stat gap kept with a note when team totals match
+PM_NOTE_MAX = 2            # D14: plus-minus gap kept with a note when a sub shares a second with a technical FT
 
 
-def _row(game_id, check, passed, residual, detail="", hard=True):
+def _row(game_id, check, passed, residual, detail="", hard=True, noted=False):
     return {"game_id": game_id, "check": check, "hard": hard, "passed": bool(passed),
-            "residual": float(residual), "detail": detail}
+            "residual": float(residual), "detail": detail, "noted": bool(noted)}
+
+
+def sub_at_technical_ft(ev: pd.DataFrame) -> bool:
+    """A substitution in the same second (same period) as a technical free throw (D14)."""
+    tft = ev[(ev.etype == "ft") & ev.technical]
+    subs = ev[ev.etype == "sub"]
+    keys = set(zip(subs.period, subs.elapsed.round(0)))
+    return any((p, t) in keys for p, t in zip(tft.period, tft.elapsed.round(0)))
 
 
 def pbp_player_counts(ev: pd.DataFrame) -> pd.DataFrame:
@@ -63,7 +77,8 @@ def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None
     extra = on.index.difference(b.index)  # on the floor per stints but not in the box at all
     resid = max(diff.abs().max(), on.seconds.reindex(extra).max() if len(extra) else 0)
     worst = diff.abs().sort_values(ascending=False).head(3)
-    rows.append(_row(gid, "minutes", resid <= 1.0, resid, ";".join(f"{p}:{d:+.1f}" for p, d in diff[worst.index].items())))
+    minutes_ok = resid <= 1.0
+    rows.append(_row(gid, "minutes", minutes_ok, resid, ";".join(f"{p}:{d:+.1f}" for p, d in diff[worst.index].items())))
 
     bad = ((stints.home_ids.map(len) != 5) | (stints.away_ids.map(len) != 5)).sum()
     rows.append(_row(gid, "floor_five", bad == 0, bad, f"{bad} of {len(stints)} stints"))
@@ -73,8 +88,11 @@ def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None
     rows.append(_row(gid, "game_seconds", abs(stints.seconds.sum() - length) <= 1.0, stints.seconds.sum() - length))
 
     pm = on.pm.reindex(b.index, fill_value=0) - b.plus_minus
-    rows.append(_row(gid, "plus_minus", (pm == 0).all(), pm.abs().max(),
-                     ";".join(f"{p}:{d:+d}" for p, d in pm[pm != 0].astype(int).items())[:200]))
+    pm_detail = ";".join(f"{p}:{d:+d}" for p, d in pm[pm != 0].astype(int).items())[:200]
+    exact = bool((pm == 0).all())
+    pm_noted = (not exact and pm.abs().max() <= PM_NOTE_MAX and minutes_ok and sub_at_technical_ft(ev))
+    rows.append(_row(gid, "plus_minus", exact or pm_noted, pm.abs().max(),
+                     ("sub at technical FT; " if pm_noted else "") + pm_detail, noted=pm_noted))
 
     team_pbp = ev.groupby("team_id").points.sum()
     team_box = box_df.groupby("team_id").pts.sum()
@@ -84,8 +102,14 @@ def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None
     cnt = pbp_player_counts(ev).reindex(b.index, fill_value=0)
     boxc = b.assign(reb=b.oreb + b.dreb)[COUNT_STATS]
     cd = (cnt[COUNT_STATS] - boxc)
+    team_cd = cd.groupby(b.team_id).sum()  # nonzero: an event missing, not moved between teammates
     off = [f"{s}:{int(cd[s].abs().sum())}" for s in COUNT_STATS if cd[s].abs().sum()]
-    rows.append(_row(gid, "pbp_counts", not off, cd.abs().to_numpy().max(), ";".join(off)))
+    team_off = [f"team {t} {s}:{int(v):+d}" for t, r in team_cd.iterrows() for s, v in r.items() if v]
+    worst = cd.abs().to_numpy().max()
+    counts_noted = bool(off) and not team_off and worst <= COUNT_NOTE_MAX
+    rows.append(_row(gid, "pbp_counts", not off or counts_noted, worst,
+                     ";".join(off + team_off) + ("; moved between teammates" if counts_noted else ""),
+                     noted=counts_noted))
 
     if pbpstats_poss:
         ours = {home: stints.home_poss.sum(), away: stints.away_poss.sum()}

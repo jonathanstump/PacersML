@@ -196,7 +196,9 @@ def infer_starters(ev_period: pd.DataFrame, team: int, roster: pd.DataFrame, pre
     """Starters for one team in one period.
 
     1. A player whose first appearance in the period is anything other than being subbed in started it
-       (shots, rebounds, fouls, turnovers, or being subbed out).
+       (shots, rebounds, fouls, turnovers, or being subbed out). Technical fouls and ejections don't count:
+       bench players get them (0022400664: a bench double technical made a sixth "starter"; 0022501127: an
+       ejection from the bench).
     2. If fewer than 5 are found, fill from the previous period's closing five (players who weren't subbed in
        during this period), most box-score minutes first.
     3. Still short (e.g. period 1 with a silent player): fill from the rest of the roster by box minutes,
@@ -210,7 +212,8 @@ def infer_starters(ev_period: pd.DataFrame, team: int, roster: pd.DataFrame, pre
                 starters.add(e.out_id)
             if e.in_id:
                 subbed_in.add(e.in_id)
-        elif e.team_id == team and e.person_id and e.person_id not in subbed_in:
+        elif (e.team_id == team and e.person_id and e.person_id not in subbed_in and not e.technical
+              and not str(e.desc).startswith("Ejection")):
             if e.person_id in set(roster.person_id):
                 starters.add(e.person_id)
     note = "events"
@@ -229,7 +232,8 @@ def infer_starters(ev_period: pd.DataFrame, team: int, roster: pd.DataFrame, pre
 
 
 def from_pbp(ev: pd.DataFrame, box_df: pd.DataFrame, home: int, away: int, game_id: str):
-    """Fallback builder: inferred period starters, substitutions from the play-by-play."""
+    """Fallback builder: inferred period starters, substitutions from the play-by-play.
+    (A box-minutes starter repair was tried and recovered no games, D14; not kept.)"""
     rosters = {t: box_df[box_df.team_id == t] for t in (home, away)}
     return _walk_subs(ev, lambda p, t, ev_p, cur: infer_starters(ev_p, t, rosters[t], cur),
                       home, away, game_id, "pbp_rebuild")

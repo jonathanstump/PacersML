@@ -118,6 +118,7 @@ class GameResult:
     quarantine: dict | None
     starters_info: dict
     sub_timing: dict
+    kept_note: dict | None = None  # passed with noted checks (D14): kept, listed in the report
 
 
 def process_game(g: pd.Series, data: GameData) -> GameResult:
@@ -160,8 +161,15 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
              "pacers_game": PACERS in (home, away),
              "starters": str({f"P{p}:{t}": v for (p, t), v in info.items()}) if info else ""}
 
+    kept = None
+    noted = checks[checks.noted & checks.passed]
+    if q is None and not noted.empty:
+        kept = {"game_id": gid, "season": g.season, "season_type": g.season_type, "stint_method": method,
+                "pacers_game": PACERS in (home, away), "checks": ",".join(noted.check),
+                "detail": " | ".join(f"{r.check}: {r.detail}" for r in noted.itertuples())}
+
     stints = stints.assign(season=g.season, season_type=g.season_type)
     pg = player_game(data.box, player_stints(stints, home, away), ev).assign(season=g.season,
                                                                               season_type=g.season_type)
     checks = checks.assign(season=g.season, season_type=g.season_type)
-    return GameResult(stints, pg, checks, q, info, timing)
+    return GameResult(stints, pg, checks, q, info, timing, kept)

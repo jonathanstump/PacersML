@@ -181,17 +181,19 @@ C has no offensive possessions, so offensive rates are NaN rather than 0.
 | minutes | each player's stint seconds within ±1 s of box MIN | yes (lineup) |
 | floor_five | every stint has exactly 5 per team | yes (lineup) |
 | game_seconds | total stint seconds = 2880 + 300·OT (±1 s) | yes (lineup) |
-| plus_minus | each player's stint point differential = box +/- exactly | yes (lineup) |
+| plus_minus | each player's stint point differential = box +/- exactly; ±2 passes **with a note** only when minutes pass and a substitution shares a second with a technical FT (D14) | yes (lineup) |
 | team_points | PBP points per team = box points | yes |
-| pbp_counts | PBP-derived PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, TOV, REB, PF per player = box exactly | yes |
+| pbp_counts | PBP-derived PTS, FGM, FGA, 3PM, 3PA, FTM, FTA, TOV, REB, PF per player = box; a player gap ≤ 2 passes **with a note** when every team total matches (D14) | yes |
 | poss_pbpstats | team possessions vs pbpstats.com | reported only |
 
 If any hard check fails, the game is quarantined (no second builder is tried, D11): kept out of processed tables, listed in
 `data/processed/quarantine.parquet` and `site_export/quarantine.json` (game, checks failed, residuals,
 `stint_method`, whether rotation data existed, the two sub-timing counts, Pacers flag, period starters).
+A game that passes only through a noted exception is kept and listed separately as "kept with notes" (D14).
 
 Season-level:
-- more than **1%** of a season's games quarantined → refresh exits with code 2, processed tables not overwritten (D3);
+- more than **1%** of a season's **hybrid-built** games quarantined → refresh exits with code 2, processed tables
+  not overwritten (D3, amended D14). Rebuild failures have no alarm; they are listed and counted per season;
 - team-season possessions vs NBA team POSS, gap **> 2%** → exit code 4 (D1);
 - player-season possessions vs NBA player POSS, as (off+def)/2 and off-only: flagged when the gap is > 2% **and**
   > 5 possessions; report-only (D7);
@@ -213,7 +215,10 @@ in the run summary and in `site_export/quarantine.json`.
 
 **What could make it wrong.**
 - NBA sometimes corrects box scores after the fact without changing the PBP (or vice versa). That shows up as
-  `pbp_counts` / `team_points` failures that no rebuild can fix.
+  `pbp_counts` / `team_points` failures that no rebuild can fix. When the stat only moved between teammates
+  (team totals match, gap ≤ 2) the game is kept with a note; a team-total mismatch is assumed to be a missing
+  event. Not every team-total gap is a missing event: a shot NBA re-scored from 3 to 2 changes team 3PA without
+  removing anything (9 games in 2024-25/2025-26 differ only by one team 3PA).
 - Plus-minus passing doesn't prove the lineups are right: two errors could cancel within one player's minutes.
   Minutes and plus-minus together make that unlikely, but not impossible.
 - NBA's player POSS definition isn't documented. Player gaps are definitional (same games, no sampling), so
@@ -224,3 +229,5 @@ in the run summary and in `site_export/quarantine.json`.
 1. Why is plus-minus the strongest single check on lineups?
 2. A season has 15 of 1,230 games quarantined. What happens, and what is the first thing to look at?
 3. Which checks can the PBP rebuild fix, and which can't it?
+4. A game's Pacers rebound total matches the box, but one Pacer has 2 rebounds too many and another 2 too few.
+   Is it kept, and what does that do to team rebound rate vs player rebound rate?
