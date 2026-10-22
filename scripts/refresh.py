@@ -124,6 +124,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
 
     ledger_path, ledger = rotation_ledger(season)
     use_rotation = args.source in ("auto", "stats")
+    call_rotation = use_rotation and not args.no_rotation_calls  # cached rotation files are used either way
     fetch_only = args.max_fetch is not None
     results, missing, fetched = {}, [], 0
 
@@ -135,7 +136,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
         gid = g.game_id
         has_rot = cache.find_raw(season, ["stats_rotation"], gid) is not None
         # download chunks leave gamerotation to scripts/rotation_pass.py, which waits out failures properly (D13)
-        try_rot = (use_rotation and not fetch_only and not has_rot and ledger.get(gid, 0) < ROTATION_TRIES
+        try_rot = (call_rotation and not fetch_only and not has_rot and ledger.get(gid, 0) < ROTATION_TRIES
                    and time.monotonic() >= c.cooling_until.get("stats/gamerotation", 0))
         if fetch_only and not try_rot and all(cache.find_raw(season, [k for k, _ in f], gid) is not None
                                               for f in (BOX_FETCHERS, PBP_FETCHERS)):
@@ -166,7 +167,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     # Second pass (D11): gamerotation fails per game, so games that missed it get another call now, up to
     # ROTATION_TRIES calls per game in total. Fetch-only chunks leave this to later chunks and the final run.
     retry = [gid for gid, (_, has_rot, _) in results.items() if not has_rot and ledger.get(gid, 0) < ROTATION_TRIES]
-    if budget_left and retry and use_rotation:
+    if budget_left and retry and call_rotation:
         print(f"  second pass: retrying rotation for {len(retry)} games", flush=True)
         c.cooling_until.clear()
         for gid in retry:
@@ -400,6 +401,9 @@ def main() -> int:
     ap.add_argument("--skip-preflight", action="store_true", help="skip the access probe (tests / debugging only)")
     ap.add_argument("--accept-regressions", action="store_true",
                     help="accept games that passed last run and are quarantined now; updates the baseline (D15)")
+    ap.add_argument("--no-rotation-calls", action="store_true",
+                    help="never call gamerotation; use cached rotation files only (that is rotation_pass.py's job). "
+                         "A training season with rotation tries left is still not frozen")
     ap.add_argument("--max-fetch", type=int, help="download only (no processing); stop after N games that needed "
                                                   "the network, exit 5 if more remain (D12)")
     args = ap.parse_args()
