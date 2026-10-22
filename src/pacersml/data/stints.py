@@ -133,7 +133,9 @@ def _walk_subs(ev, starters, home, away, game_id, method):
                 lineup[t], note = starters(e.period, t, ev_p, lineup[t])
                 info[(e.period, t)] = {"starters": sorted(lineup[t]), "method": note}
             segments.append((i, period_start(e.period), e.period, {k: set(v) for k, v in lineup.items()}))
-        elif e.etype == "sub" and e.team_id in lineup:
+        # Not elif: between-period subs are logged before the period_start row, so a period's first row is often
+        # a sub, and it must still be applied (the rebuild's starters are the lineup before those subs).
+        if e.etype == "sub" and e.team_id in lineup:
             lineup[e.team_id].discard(e.out_id)
             if e.in_id:
                 lineup[e.team_id].add(e.in_id)

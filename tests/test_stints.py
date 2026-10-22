@@ -101,3 +101,21 @@ def test_events_after_last_ft_use_lineup_on_floor():
     stints, _, _ = from_pbp(ev(rows), box(), HOME, AWAY, GAME)
     assert stints.away_pts.tolist() == [1, 2]
     assert (stints.away_ft_miss_live.tolist(), stints.away_oreb.tolist()) == ([1, 0], [0, 1])
+
+
+def test_sub_logged_before_period_start_row_is_applied():
+    # between-period subs come before the period_start row, so the period's first row is a sub
+    rows = [
+        dict(etype="period_start"),
+        dict(elapsed=10, team_id=HOME, person_id=14, etype="fg", value=2),
+        dict(elapsed=720, etype="period_end"),
+        dict(period=2, elapsed=720, team_id=HOME, etype="sub", in_id=16, out_id=14),
+        dict(period=2, elapsed=720, etype="period_start"),
+        dict(period=2, elapsed=730, team_id=HOME, person_id=16, etype="fg", value=2),
+        dict(period=2, elapsed=1440, etype="period_end"),
+    ]
+    b = box().assign(seconds=lambda d: d.seconds * 0 + 1440)
+    stints, _, _ = from_pbp(ev(rows), b, HOME, AWAY, GAME)
+    p2 = stints[stints.period == 2]
+    assert all(len(s) == 5 for s in stints.home_ids) and all(len(s) == 5 for s in stints.away_ids)
+    assert all(16 in s and 14 not in s for s in p2.home_ids)
