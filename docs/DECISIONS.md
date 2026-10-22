@@ -462,9 +462,29 @@ Not restarted. Restart plan is in the open items below; it needs Jonathan's go-a
   possession, same points), a 3 re-scored as a 2 (only the shot type changes, which settles that open question),
   a 3-point attempt missing from both totals. Cost: shot-level detail off by one shot in those games, negligible
   for a season's corner-3 rate (H1).
-  - Implementation choices (Claude, for Jonathan to confirm): "within tolerance" = each team's possessions within
+  - Implementation choices (proposed by Claude, **confirmed by Jonathan 2026-10-22**): "within tolerance" = each team's possessions within
     **2% of pbpstats.com** for that game (D1's tolerance; pbpstats has every 2024-25 game, gaps 0–4, median 1).
     No pbpstats number → not confirmed → quarantined, unless every team total matches (the D14 teammate case,
     which can't change possessions). No per-player cap on the count gap.
 - **Pacers games:** a divergence timeline for each quarantined Pacers game (`scripts/divergence.py`, output in
   `reports/quarantine_review/`), 0042400306 first.
+
+---
+
+## D16 — Run order: process from the cache now, pull rotation later (2026-10-22, Phase 1)
+
+About 2,400 downloaded games have no rotation file (2024-25: 1,124 of 1,320; 2025-26: 1,283 of 1,321;
+2026-27: 8 of 11). At the throttle-safe pace (one gamerotation call per 30 s, D15), pulling them takes about 20 h.
+
+Options given: (1) process now from the cache, then run the rotation pass and re-process; (2) rotation pass first,
+then process once; (3) process now and skip the pass.
+
+**Decision (Jonathan): option 1.**
+- Process now with `refresh.py --no-rotation-calls`, which never calls gamerotation and uses only cached rotation
+  files. Games without one use the pure rebuild. This first run writes the tables and the regression baseline.
+- Then run `rotation_pass.py` (after `--reset-throttled`, once), in Jonathan's terminal. It is resumable.
+- Then re-process. Training seasons don't freeze while any game still has rotation tries left (D13). Games that
+  switch from rebuild to hybrid and now fail trip the regression alarm (exit 6). Jonathan reviews them and
+  accepts with `--accept-regressions`.
+- Group A tolerance details (D15) confirmed as built: 2% of pbpstats per team; no pbpstats number → quarantined
+  unless every team total matches; no per-player cap.
