@@ -48,6 +48,8 @@ only the championship game (prefix 006) doesn't, and it is not pulled.
 
 > **Amended by D14** (2026-10-22): the 1% alarm applies to hybrid-built games only; rebuild failures are listed
 > and counted, no alarm.
+> **Amended again by D15** (2026-10-22): no rate alarm. The hybrid alarm fires on any game where the shadow
+> rebuild passes the lineup checks and the hybrid fails them; a regression alarm stops the run.
 
 **Decision:** If stints built from `gamerotation` fail a hard check, rebuild that game's stints from
 play-by-play substitutions plus period-starter inference and re-run the checks. If it still fails, quarantine it.
@@ -375,6 +377,9 @@ Download chunks no longer call gamerotation at all (2026-10-22); the rotation pa
 
 ## D14 — What the remaining validation failures mean, and which games are kept (2026-10-22, Phase 1)
 
+> **Group A rule amended by D15** (2026-10-22): kept with notes when team points match and possessions are within
+> tolerance, not only when every team total matches. The entry below is unchanged, for the record.
+
 **What happened:** after the rebuild fix (between-period subs, commit 010f967), an offline re-run of both
 training seasons from the cache had 135 games failing (60 of 1,320 in 2024-25, 75 of 1,321 in 2025-26), in four
 groups: A, play-by-play counts vs box off by 1–2 with lineups right (89); B, plus-minus only, off by 1–3 (20);
@@ -414,3 +419,52 @@ C, lineup failures (24); D, team points (2).
   evidence that a player started a period, since bench players get them (0022400664, a Pacers game: a bench double
   technical made a sixth starter; 0022501127: an ejection from the bench). 7 of the 22 rebuild lineup failures pass
   after these fixes.
+
+---
+
+## D15 — Rotation pass diagnosis; builder-disagreement and regression alarms; Group A revised (2026-10-22, Phase 1)
+
+### Rotation pass: why most pulls failed (diagnosed 2026-10-22, 02:55–03:10 UTC)
+
+The pass was stopped at game 250 of 1,127 (2024-25 round 1): 50 ok, 200 failed, one outage pause (box scores
+also unanswered at 02:37 UTC). Sorted by cause:
+- **Empty or partial responses / missing data for older games:** not seen. Every failure is an HTTP-level failure;
+  failures do not cluster by game date (successes spread across the whole season).
+- **Parsing after a successful fetch:** not the cause. All 196 cached 2024-25 rotation files parse with five
+  starters per team in every period; 1 of 38 in 2025-26 does not.
+- **HTTP errors: the cause.** A slow sample (14 requests, 8 s apart, 20 s timeout): 11 read timeouts, 1 HTTP 500,
+  1 success, plus 2 control games that had downloaded fine before, both timed out. In the same minutes,
+  `boxscoretraditionalv3` for the same game answered 200 in 0.9 s, and gamerotation with a 60 s timeout returned
+  500 in 0.1 s. A few minutes later a box-score request timed out too, and all requests were stopped.
+- Success rate by how often gamerotation was being called: ~60% when spread among download requests (chunks,
+  2026-10-21), ~20% in the dedicated pass (one call every ~4 s), 1 of 14 in the diagnostic. Most ledger
+  "failures" recorded so far say nothing about the game itself.
+
+Not restarted. Restart plan is in the open items below; it needs Jonathan's go-ahead.
+
+### Decision (Jonathan)
+
+- **Hybrid alarm (D3 amended):** option 3. The pure rebuild runs as a **shadow on every game that has rotation
+  data**; its stints are not kept. The alarm fires on **any game where the shadow rebuild passes the lineup checks
+  (minutes, floor_five, game_seconds, plus_minus) and the hybrid fails them**: the two builders disagreeing on the
+  same game is the cleanest sign of a bug in ours. Group A and D failures (NBA's own sources disagreeing)
+  quarantine games but are not builder bugs and don't count.
+- **Regression alarm (new):** any game that passed or was kept with notes in the previous run and is quarantined
+  now **stops the run** (exit 6): nothing written for that season, baseline unchanged. Baseline:
+  `data/processed/{season}/game_outcomes.parquet`. `--accept-regressions` accepts an intended change.
+- **Games lost per season:** reported by builder and group on the Methods page (`games_lost` in
+  `site_export/quarantine.json`), no alarm.
+- **Group A revised (D14 amended):** kept with notes when **team points match and our possessions are within
+  tolerance**; quarantined otherwise. Reasoning (Jonathan): the team-total rule was meant to separate
+  misattribution from missing events, but the 45 "missing events" are single shots and rebounds. They don't change
+  team points or possessions, which are what stints and RAPM use, and quarantining ~2% of games for a one-shot
+  difference costs more than it protects. Covers all three patterns: extra missed shot + offensive rebound (same
+  possession, same points), a 3 re-scored as a 2 (only the shot type changes, which settles that open question),
+  a 3-point attempt missing from both totals. Cost: shot-level detail off by one shot in those games, negligible
+  for a season's corner-3 rate (H1).
+  - Implementation choices (Claude, for Jonathan to confirm): "within tolerance" = each team's possessions within
+    **2% of pbpstats.com** for that game (D1's tolerance; pbpstats has every 2024-25 game, gaps 0–4, median 1).
+    No pbpstats number → not confirmed → quarantined, unless every team total matches (the D14 teammate case,
+    which can't change possessions). No per-player cap on the count gap.
+- **Pacers games:** a divergence timeline for each quarantined Pacers game (`scripts/divergence.py`, output in
+  `reports/quarantine_review/`), 0042400306 first.

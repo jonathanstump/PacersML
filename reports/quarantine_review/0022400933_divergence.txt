@@ -1,0 +1,91 @@
+
+=== 0022400933 (2024-25) · builder pbp_rebuild · failing: minutes, plus_minus
+  minutes gaps > 1 s (ours - box): Aaron Nesmith +99.0 s, Ben Sheppard -99.0 s
+  minutes: Aaron Nesmith over +99.0 s, Ben Sheppard short -99.0 s; stretches with Aaron Nesmith on and Ben Sheppard off:
+     Q1 12:00.0 -> Q1 05:57.0   363.0 s
+     Q2 10:38.0 -> Q2 01:47.0   531.0 s
+     Q3 12:00.0 -> Q3 05:54.0   366.0 s
+   no stretch matches 99.0 s; candidate points (stretch end - 99 s, start + 99 s) with a dead ball within 3 s:
+   timeline around Q2 03:26.0:
+       Q2 03:44.0  seq  254  fg           Coby White             C. White running Layup (10 PTS)
+       Q2 03:29.0  seq  255  fg           Bennedict Mathurin     MISS B. Mathurin driving floating Shot
+       Q2 03:27.0  seq  256  rebound      Bennedict Mathurin     B. Mathurin REBOUND (Off:1 Def:0)
+       Q2 03:27.0  seq  257  fg           Bennedict Mathurin     MISS B. Mathurin tip Layup
+    >> Q2 03:26.0  seq  258  rebound                             TEAM defensive REBOUND
+    >> Q2 03:26.0  seq  259  sub          Patrick Williams       SUB out: P. Williams  IN Tre Jones / OUT Patrick Williams
+    >> Q2 03:26.0  seq  260  sub          T.J. McConnell         SUB out: T. McConnell  IN Andrew Nembhard / OUT T.J. McConnell
+    >> Q2 03:26.0  seq  263  jumpball     Josh Giddey            Jump Ball K. Huerter vs. B. Mathurin: Tip to J. Giddey
+       Q2 03:19.0  seq  264  turnover     Josh Giddey            J. Giddey bad pass TURNOVER (2 TO)
+       Q2 03:19.0  seq  265  other        Andrew Nembhard        A. Nembhard STEAL (3 STL)
+       Q2 03:16.0  seq  266  foul         Bennedict Mathurin     B. Mathurin off-the-ball offensive FOUL (2 PF)
+       Q2 03:16.0  seq  267  turnover     Bennedict Mathurin     B. Mathurin offensive foul TURNOVER (2 TO)
+       our away lineup at Q2 03:26.0: Myles Turner, Pascal Siakam, Andrew Nembhard, Aaron Nesmith, Bennedict Mathurin
+  plus_minus gaps (ours - box): Aaron Nesmith -3, Ben Sheppard +3
+  scoring plays in the same second as a sub involving those players: 8
+   timeline around Q1 05:57.0:
+       Q1 06:06.0  seq   58  fg           T.J. McConnell         MISS T. McConnell 3PT
+       Q1 06:03.0  seq   59  rebound      Josh Giddey            J. Giddey REBOUND (Off:0 Def:3)
+    >> Q1 05:57.0  seq   60  fg           Josh Giddey            J. Giddey driving finger roll Layup (7 PTS)
+    >> Q1 05:57.0  seq   61  foul         Bennedict Mathurin     B. Mathurin shooting personal FOUL (1 PF) (Giddey 1 FT)
+    >> Q1 05:57.0  seq   62  sub          Zach Collins           SUB out: Z. Collins  IN Nikola Vučević / OUT Zach Collins
+    >> Q1 05:57.0  seq   63  sub          Aaron Nesmith          SUB out: A. Nesmith  IN Thomas Bryant / OUT Aaron Nesmith
+    >> Q1 05:57.0  seq   64  sub          Myles Turner           SUB out: M. Turner  IN Ben Sheppard / OUT Myles Turner
+    >> Q1 05:57.0  seq   68  ft           Josh Giddey            J. Giddey Free Throw 1 of 1 (8 PTS)
+       Q1 05:39.0  seq   69  fg           T.J. McConnell         MISS T. McConnell 15' pullup Shot
+       our home lineup at Q1 05:57.0: Nikola Vučević, Kevin Huerter, Tre Jones, Josh Giddey, Matas Buzelis
+       our away lineup at Q1 05:57.0: T.J. McConnell, Thomas Bryant, Obi Toppin, Bennedict Mathurin, Ben Sheppard
+   timeline around Q2 10:38.0:
+       Q2 10:51.0  seq  160  fg           Kevin Huerter          K. Huerter 8' turnaround Jump Shot (5 PTS)
+       Q2 10:43.0  seq  161  fg           Ben Sheppard           MISS B. Sheppard 3PT
+       Q2 10:40.0  seq  162  rebound      Coby White             C. White REBOUND (Off:0 Def:2)
+    >> Q2 10:38.0  seq  163  fg           Coby White             C. White running Layup (4 PTS)
+    >> Q2 10:38.0  seq  164  foul         Pascal Siakam          P. Siakam shooting personal FOUL (1 PF) (White 1 FT)
+    >> Q2 10:38.0  seq  165  sub          Patrick Williams       SUB out: P. Williams  IN Tre Jones / OUT Patrick Williams
+    >> Q2 10:38.0  seq  166  sub          Ben Sheppard           SUB out: B. Sheppard  IN Bennedict Mathurin / OUT Ben Sheppard
+    >> Q2 10:38.0  seq  169  ft           Coby White             C. White Free Throw 1 of 1 (5 PTS)
+       Q2 10:22.0  seq  170  fg           Myles Turner           M. Turner 15' turnaround Jump Shot (6 PTS) (A. Nesmith 1 AST
+       our home lineup at Q2 10:38.0: Nikola Vučević, Kevin Huerter, Coby White, Tre Jones, Julian Phillips
+       our away lineup at Q2 10:38.0: T.J. McConnell, Myles Turner, Pascal Siakam, Aaron Nesmith, Bennedict Mathurin
+   timeline around Q2 01:47.0:
+       Q2 02:03.0  seq  273  fg           Myles Turner           M. Turner cutting Layup (12 PTS) (P. Siakam 2 AST)
+    >> Q2 01:47.0  seq  274  fg           Coby White             C. White 25' 3PT step back (13 PTS)
+    >> Q2 01:47.0  seq  275  foul         Andrew Nembhard        A. Nembhard shooting personal FOUL (1 PF) (White 1 FT)
+    >> Q2 01:47.0  seq  276  sub          Bennedict Mathurin     SUB out: B. Mathurin  IN Ben Sheppard / OUT Bennedict Mathurin
+    >> Q2 01:47.0  seq  278  ft           Coby White             C. White Free Throw 1 of 1 (14 PTS)
+       Q2 01:39.0  seq  279  fg           Myles Turner           M. Turner 25' 3PT  (15 PTS) (A. Nembhard 2 AST)
+       Q2 01:31.0  seq  280  fg           Josh Giddey            J. Giddey driving Layup (20 PTS)
+       Q2 01:31.0  seq  281  foul         Ben Sheppard           B. Sheppard shooting personal FOUL (1 PF) (Giddey 1 FT)
+       Q2 01:31.0  seq  282  ft           Josh Giddey            J. Giddey Free Throw 1 of 1 (21 PTS)
+       our home lineup at Q2 01:47.0: Nikola Vučević, Kevin Huerter, Coby White, Tre Jones, Josh Giddey
+       our away lineup at Q2 01:47.0: Myles Turner, Pascal Siakam, Andrew Nembhard, Aaron Nesmith, Ben Sheppard
+   timeline around Q3 05:54.0:
+       Q3 06:01.0  seq  357  fg           Bennedict Mathurin     MISS B. Mathurin driving Layup
+       Q3 05:59.0  seq  358  rebound      Zach Collins           Z. Collins REBOUND (Off:2 Def:5)
+    >> Q3 05:54.0  seq  359  fg           Josh Giddey            J. Giddey running Layup (25 PTS) (T. Jones 5 AST)
+    >> Q3 05:54.0  seq  360  other                               IND Timeout
+    >> Q3 05:54.0  seq  361  sub          Bennedict Mathurin     SUB out: B. Mathurin  IN T.J. McConnell / OUT Bennedict Mathurin
+    >> Q3 05:54.0  seq  362  sub          Andrew Nembhard        SUB out: A. Nembhard  IN Thomas Bryant / OUT Andrew Nembhard
+    >> Q3 05:54.0  seq  363  sub          Aaron Nesmith          SUB out: A. Nesmith  IN Johnny Furphy / OUT Aaron Nesmith
+    >> Q3 05:54.0  seq  364  sub          Myles Turner           SUB out: M. Turner  IN Ben Sheppard / OUT Myles Turner
+    >> Q3 05:54.0  seq  365  sub          Pascal Siakam          SUB out: P. Siakam  IN Obi Toppin / OUT Pascal Siakam
+       Q3 05:43.0  seq  371  turnover     T.J. McConnell         T. McConnell bad pass TURNOVER (1 TO)
+       Q3 05:43.0  seq  372  other        Kevin Huerter          K. Huerter STEAL (2 STL)
+       Q3 05:43.0  seq  373  sub          T.J. McConnell         SUB out: T. McConnell  IN Quenton Jackson / OUT T.J. McConnell
+       Q3 05:43.0  seq  375  jumpball     Josh Giddey            Jump Ball K. Huerter vs. B. Sheppard: Tip to J. Giddey
+       our home lineup at Q3 05:54.0: Zach Collins, Kevin Huerter, Tre Jones, Josh Giddey, Julian Phillips
+       our away lineup at Q3 05:54.0: T.J. McConnell, Thomas Bryant, Obi Toppin, Ben Sheppard, Johnny Furphy
+   timeline around Q4 07:32.0:
+    >> Q4 07:32.0  seq  487  fg           Josh Giddey            MISS J. Giddey driving Layup
+    >> Q4 07:32.0  seq  488  rebound      Nikola Vučević         N. Vučević REBOUND (Off:2 Def:9)
+    >> Q4 07:32.0  seq  489  fg           Nikola Vučević         N. Vučević tip Layup (11 PTS)
+    >> Q4 07:32.0  seq  490  foul         Kevin Huerter          K. Huerter take personal FOUL (3 PF)
+    >> Q4 07:32.0  seq  491  sub          Nikola Vučević         SUB out: N. Vučević  IN Coby White / OUT Nikola Vučević
+    >> Q4 07:32.0  seq  492  sub          Josh Giddey            SUB out: J. Giddey  IN Zach Collins / OUT Josh Giddey
+    >> Q4 07:32.0  seq  493  sub          Obi Toppin             SUB out: O. Toppin  IN Tony Bradley / OUT Obi Toppin
+    >> Q4 07:32.0  seq  494  sub          Ben Sheppard           SUB out: B. Sheppard  IN RayJ Dennis / OUT Ben Sheppard
+       Q4 07:20.0  seq  499  fg           Quenton Jackson        MISS Q. Jackson 19' pullup Shot
+       Q4 07:18.0  seq  500  rebound      Tre Jones              T. Jones REBOUND (Off:0 Def:1)
+       Q4 07:12.0  seq  501  turnover     Tre Jones              T. Jones lost ball TURNOVER (1 TO)
+       Q4 07:12.0  seq  502  other        RayJ Dennis            R. Dennis STEAL (1 STL)
+       our home lineup at Q4 07:32.0: Zach Collins, Kevin Huerter, Coby White, Tre Jones, Matas Buzelis
+       our away lineup at Q4 07:32.0: Tony Bradley, Quenton Jackson, Jarace Walker, Johnny Furphy, RayJ Dennis

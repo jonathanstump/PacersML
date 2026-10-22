@@ -9,8 +9,9 @@ Per-game checks (hard = a failure quarantines the game, D3/D11):
                   a substitution in the same second as a technical free throw (NBA's box is inconsistent there)
     team_points   PBP points per team == box points per team                                hard
     pbp_counts    PBP-derived player counts (pts, fgm, fga, fg3m, fg3a, ftm, fta, tov, reb, pf) vs box (D5).
-                  Passes, noted, when every player gap is <= 2 and every team total matches: the stat moved
-                  between teammates across NBA's two sources (D14). Otherwise                 hard
+                  Passes, noted, when every team total matches (moved between teammates, D14), or when team
+                  points match and each team's possessions are within 2% of pbpstats.com: shot- and
+                  rebound-level differences don't change what stints and RAPM use (D15). Otherwise  hard
 A passing check with `noted` set puts the game in the "kept with notes" list instead of quarantine.
     poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
 Season checks:
@@ -32,8 +33,7 @@ COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb", 
 POSS_TOL = 0.02            # D1 / D5
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
 DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
-QUARANTINE_ALARM = 0.01    # D3, amended D14: applies to hybrid games only
-COUNT_NOTE_MAX = 2         # D14: player stat gap kept with a note when team totals match
+LINEUP_CHECKS = ("minutes", "floor_five", "game_seconds", "plus_minus")
 PM_NOTE_MAX = 2            # D14: plus-minus gap kept with a note when a sub shares a second with a technical FT
 
 
@@ -102,20 +102,41 @@ def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None
     cnt = pbp_player_counts(ev).reindex(b.index, fill_value=0)
     boxc = b.assign(reb=b.oreb + b.dreb)[COUNT_STATS]
     cd = (cnt[COUNT_STATS] - boxc)
-    team_cd = cd.groupby(b.team_id).sum()  # nonzero: an event missing, not moved between teammates
+    team_cd = cd.groupby(b.team_id).sum()
     off = [f"{s}:{int(cd[s].abs().sum())}" for s in COUNT_STATS if cd[s].abs().sum()]
     team_off = [f"team {t} {s}:{int(v):+d}" for t, r in team_cd.iterrows() for s, v in r.items() if v]
-    worst = cd.abs().to_numpy().max()
-    counts_noted = bool(off) and not team_off and worst <= COUNT_NOTE_MAX
-    rows.append(_row(gid, "pbp_counts", not off or counts_noted, worst,
-                     ";".join(off + team_off) + ("; moved between teammates" if counts_noted else ""),
-                     noted=counts_noted))
+
+    ours = {home: int(stints.home_poss.sum()), away: int(stints.away_poss.sum())}
+    poss_ok = bool(pbpstats_poss) and all(
+        t in pbpstats_poss and abs(ours[t] - pbpstats_poss[t]) <= POSS_TOL * pbpstats_poss[t] for t in (home, away))
+    moved = not team_off  # every team total matches: the stat moved between teammates (D14), possessions unchanged
+    counts_noted = bool(off) and (moved or ((tdiff == 0).all() and poss_ok))
+    note = ("; moved between teammates" if off and moved
+            else "; team points match, possessions within 2% of pbpstats" if counts_noted
+            else "; possessions not confirmed (no pbpstats)" if off and not pbpstats_poss else "")
+    rows.append(_row(gid, "pbp_counts", not off or counts_noted, cd.abs().to_numpy().max(),
+                     ";".join(off + team_off) + note, noted=counts_noted))
 
     if pbpstats_poss:
-        ours = {home: stints.home_poss.sum(), away: stints.away_poss.sum()}
         r = max(abs(ours[t] - pbpstats_poss[t]) for t in (home, away) if t in pbpstats_poss)
         rows.append(_row(gid, "poss_pbpstats", True, r, f"ours={ours} pbpstats={pbpstats_poss}", hard=False))
     return pd.DataFrame(rows)
+
+
+def lineup_ok(checks: pd.DataFrame) -> bool:
+    """All lineup checks pass (noted passes count as passes)."""
+    return bool(checks[checks.check.isin(LINEUP_CHECKS)].passed.all())
+
+
+def failure_group(failed: set[str]) -> str:
+    """D14 groups: D team points, C lineup (minutes/floor/seconds), B plus-minus, A play-by-play counts."""
+    if "team_points" in failed:
+        return "D"
+    if failed & {"minutes", "floor_five", "game_seconds"}:
+        return "C"
+    if "plus_minus" in failed:
+        return "B"
+    return "A"
 
 
 def hard_failures(checks: pd.DataFrame) -> set[str]:

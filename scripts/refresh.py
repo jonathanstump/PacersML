@@ -11,10 +11,13 @@ that failed, before the run stops (D11, D12).
 Backfill in chunks (D12): `--max-fetch N` only downloads into the raw cache, stops after N games that needed the
 network and exits 5; scripts/backfill.py repeats that with long breaks, then runs a normal (processing) refresh.
 
-Exit codes: 0 ok · 2 quarantine alarm (> 1% of a season's games, D3)
+Exit codes: 0 ok · 2 hybrid-bug alarm: a game where the shadow rebuild passes the lineup checks and the hybrid
+              fails them (D3 amended, D15)
             3 preflight failed, or a host stayed down after pausing (nothing written for that season)
             4 team-season possession cross-check > 2% (D1)
             5 --max-fetch budget used up, more games to fetch (nothing processed)
+            6 regression: a game that passed (or was kept) last run is quarantined now; the run stops, nothing
+              written, baseline not updated (D15). --accept-regressions accepts them and updates the baseline.
 Processed outputs for a season are not overwritten when that season trips 2 or 4.
 """
 from __future__ import annotations
@@ -37,7 +40,7 @@ from pacersml.data.per100 import season_per100  # noqa: E402
 from pacersml.data.pipeline import (BOX_FETCHERS, PACERS, PBP_FETCHERS, UNAVAILABLE, game_list,  # noqa: E402
                                     load_game, process_game)
 from pacersml.data.sources import stats_nba  # noqa: E402
-from pacersml.data.validate import (QUARANTINE_ALARM, gap_direction, plot_season,  # noqa: E402
+from pacersml.data.validate import (gap_direction, plot_season,  # noqa: E402
                                     player_poss_check, team_poss_check)
 
 SEASONS = ["2024-25", "2025-26", "2026-27"]
@@ -94,6 +97,20 @@ def rotation_ledger(season: str) -> tuple[Path, dict]:
     """gamerotation calls made per game so far (across runs), so a game is not retried forever (D12)."""
     path = cache.RAW / season / "rotation_attempts.json"
     return path, (json.loads(path.read_text()) if path.exists() else {})
+
+
+EXIT_REGRESSION = 6
+
+
+def find_regressions(base: pd.DataFrame, outcomes: pd.DataFrame) -> list[str]:
+    """Games that passed or were kept with notes in the baseline and are quarantined now (D15)."""
+    was = base.set_index("game_id").outcome
+    now = outcomes.set_index("game_id").outcome
+    return sorted(g for g in now.index if g in was.index and was[g] != "quarantined" and now[g] == "quarantined")
+
+
+def out_dir(season: str) -> Path:
+    return cache.PROCESSED / season
 
 
 def run_season(c: Client, season: str, args, status: dict) -> int:
@@ -216,16 +233,43 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
               f" (share over {r.share_over:.0%}){'  -> outside 40/60, investigate (D7)' if r.investigate else ''}")
     n_flag = int(player_tbl.get("flag_avg", pd.Series(dtype=bool)).fillna(False).sum())
 
-    rate = len(q_ids) / len(results)
-    if rate > QUARANTINE_ALARM and not partial:
-        code = 2
-        print(f"  !! quarantine alarm: {len(q_ids)}/{len(results)} games ({rate:.1%}) > {QUARANTINE_ALARM:.0%} (D3)")
+    # D15: regression alarm first: any game that passed or was kept last run and is quarantined now stops the run
+    outcomes = pd.DataFrame([r.outcome for r in results])
+    base_path = out_dir(season) / "game_outcomes.parquet"
+    base = pd.read_parquet(base_path) if base_path.exists() else pd.DataFrame(columns=outcomes.columns)
+    regressed = find_regressions(base, outcomes)
+    if regressed and not args.accept_regressions:
+        print(f"  !! REGRESSION: {len(regressed)} game(s) passed last run and are quarantined now: {regressed[:20]}")
+        print("     run stopped; nothing written for this season, baseline unchanged (D15). Fix the cause, or rerun "
+              "with --accept-regressions if the change is intended.")
+        status["seasons"][season] = {"games": int(len(games)), "regressed": regressed, "exit_code": EXIT_REGRESSION}
+        return EXIT_REGRESSION
+    merged = pd.concat([base[~base.game_id.isin(outcomes.game_id)], outcomes], ignore_index=True)
+    out_dir(season).mkdir(parents=True, exist_ok=True)
+    merged.to_parquet(base_path, index=False)
 
-    n_rebuilt = int(checks[checks.method == "pbp_rebuild"].game_id.nunique())
+    # D3 amended (D15): the hybrid alarm fires on any game where the shadow rebuild passes the lineup checks and
+    # the hybrid fails them. Other quarantines (NBA's sources disagreeing, rebuild losses) are counted, no alarm.
+    rate = len(q_ids) / len(results)
+    by_method = outcomes.set_index("game_id").stint_method
+    q_method = quarantine.stint_method.value_counts() if not quarantine.empty else pd.Series(dtype=int)
+    n_hybrid, n_rebuilt = int((by_method == "hybrid").sum()), int((by_method == "pbp_rebuild").sum())
+    q_hybrid, q_rebuild = int(q_method.get("hybrid", 0)), int(q_method.get("pbp_rebuild", 0))
+    hybrid_bugs = sorted(outcomes[outcomes.hybrid_bug].game_id)
+    if hybrid_bugs:
+        code = 2
+        print(f"  !! hybrid alarm: {len(hybrid_bugs)} game(s) where the shadow rebuild passes the lineup checks "
+              f"and the hybrid fails them (D15): {hybrid_bugs[:20]}")
+    lost = (quarantine.groupby(["stint_method", "group"]).size().to_dict() if not quarantine.empty else {})
+    kept = pd.DataFrame([r.kept_note for r in results if r.kept_note],
+                        columns=["game_id", "season", "season_type", "stint_method", "pacers_game", "checks", "detail"])
     no_rot = pd.DataFrame(no_rotation, columns=["game_id", "season", "season_type", "pacers_game"])
     n_unmatched = int((timing.rotation_unmatched.fillna(0) > 0).sum()) if not timing.empty else 0
     summary = {"games": int(len(games)), "processed": len(results), "missing": len(missing),
                "quarantined": len(q_ids), "quarantine_rate": round(rate, 4), "pbp_rebuild_used": n_rebuilt,
+               "hybrid_games": n_hybrid, "hybrid_quarantined": q_hybrid, "hybrid_bug_games": hybrid_bugs,
+               "rebuild_quarantined": q_rebuild, "kept_with_notes": len(kept),
+               "games_lost_by_builder_group": {f"{m}/{g}": int(n) for (m, g), n in lost.items()},
                "rotation_unavailable": len(no_rot),
                "games_with_rotation_unmatched": n_unmatched,
                "rotation_unmatched_total": int(timing.rotation_unmatched.fillna(0).sum()) if not timing.empty else 0,
@@ -236,7 +280,10 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
                "nba_reference": {st: {k: v is not None for k, v in r.items()} for st, r in ref_tables.items()}}
     status["seasons"][season] = summary
     print(f"  processed {len(results)} · missing {len(missing)} · rotation unavailable {len(no_rot)} · "
-          f"PBP rebuild used {n_rebuilt} · quarantined {len(q_ids)} ({rate:.2%})")
+          f"quarantined {len(q_ids)} ({rate:.2%}) · kept with notes {len(kept)}")
+    print(f"  hybrid: {q_hybrid}/{n_hybrid} quarantined, {len(hybrid_bugs)} hybrid-bug games · "
+          f"PBP rebuild: {q_rebuild}/{n_rebuilt} quarantined (games lost, no alarm)")
+    print("  games lost by builder/group: " + (", ".join(f"{m}/{g} {n}" for (m, g), n in sorted(lost.items())) or "none"))
     print(f"  sub timing vs rotation file: {n_unmatched} games with unmatched rotation changes "
           f"({summary['rotation_unmatched_total']} changes), {summary['pbp_subs_off_total']} PBP subs off by > 2 s")
     pacers_q = quarantine[quarantine.pacers_game] if not quarantine.empty else quarantine
@@ -245,10 +292,11 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
         for r in pacers_q.itertuples():
             print(f"  *** {r.game_id} {r.season_type}: {r.failed_checks} [{r.residuals}]")
 
-    out = cache.PROCESSED / season
+    out = out_dir(season)
     out.mkdir(parents=True, exist_ok=True)
     checks.to_parquet(out / "validation.parquet", index=False)
     quarantine.to_parquet(out / "quarantine.parquet", index=False)
+    kept.to_parquet(out / "kept_with_notes.parquet", index=False)
     no_rot.to_parquet(out / "rotation_unavailable.parquet", index=False)
     timing.to_parquet(out / "sub_timing.parquet", index=False)
     plot_season(season, checks, team_tbl, player_tbl, ROOT / "reports" / "validation")
@@ -294,6 +342,7 @@ def export_quarantine():
         return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
 
     q, no_rot, timing = gather("quarantine"), gather("rotation_unavailable"), gather("sub_timing")
+    kept = gather("kept_with_notes")
     cache.PROCESSED.mkdir(parents=True, exist_ok=True)
     q.to_parquet(cache.PROCESSED / "quarantine.parquet", index=False)
     site = ROOT / "site_export"
@@ -307,7 +356,12 @@ def export_quarantine():
                      "rotation_unmatched": int(t.rotation_unmatched.fillna(0).sum()),
                      "pbp_subs_off": int(t.pbp_subs_off.fillna(0).sum())}
             for season, t in timing.groupby("season")} if not timing.empty else {}),
-        "games": json.loads(q.to_json(orient="records")) if not q.empty else []}, indent=2))
+        "games": json.loads(q.to_json(orient="records")) if not q.empty else [],
+        # D14: games kept although a check disagreed with NBA's box within the allowed, explained limits
+        "kept_with_notes": json.loads(kept.to_json(orient="records")) if not kept.empty else [],
+        # D15: games lost per season, by builder and failure group (A counts, B plus-minus, C lineup, D points)
+        "games_lost": ({season: {f"{m}/{g}": int(n) for (m, g), n in t.groupby(["stint_method", "group"]).size().items()}
+                        for season, t in q.groupby("season")} if not q.empty and "group" in q else {})}, indent=2))
 
 
 def preflight(status: dict, game_id: str | None = None, quiet: bool = False) -> bool:
@@ -344,6 +398,8 @@ def main() -> int:
     ap.add_argument("--force", action="store_true", help="re-process a frozen training season")
     ap.add_argument("--no-write", action="store_true", help="validate only; don't write processed tables")
     ap.add_argument("--skip-preflight", action="store_true", help="skip the access probe (tests / debugging only)")
+    ap.add_argument("--accept-regressions", action="store_true",
+                    help="accept games that passed last run and are quarantined now; updates the baseline (D15)")
     ap.add_argument("--max-fetch", type=int, help="download only (no processing); stop after N games that needed "
                                                   "the network, exit 5 if more remain (D12)")
     args = ap.parse_args()
@@ -365,11 +421,11 @@ def main() -> int:
             status["seasons"][season] = {"error": str(e)}
             codes.append(3)
             break  # later seasons would hit the same wall
-        if codes[-1] == EXIT_CHUNK:
-            break  # budget used up: later seasons wait for the next chunk
+        if codes[-1] in (EXIT_CHUNK, EXIT_REGRESSION):
+            break  # budget used up, or a regression: stop the run
     if args.max_fetch is None:
         export_quarantine()
-    code = 3 if 3 in codes else max(codes, default=0)
+    code = EXIT_REGRESSION if EXIT_REGRESSION in codes else 3 if 3 in codes else max(codes, default=0)
     status.update(finished_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"), exit_code=code,
                   blocked_hosts=sorted(c.blocked_hosts))
     cache.DATA.mkdir(exist_ok=True)

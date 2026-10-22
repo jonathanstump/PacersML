@@ -10,7 +10,7 @@ from pacersml.data.http import Client, EndpointBlocked, EndpointError
 from pacersml.data.per100 import player_game
 from pacersml.data.sources import cdn_nba, pbpstats, stats_nba
 from pacersml.data.stints import compare_sub_timing, from_hybrid, from_pbp, player_stints, usable_rotation
-from pacersml.data.validate import check_game, hard_failures
+from pacersml.data.validate import check_game, failure_group, hard_failures, lineup_ok
 
 PACERS = 1610612754
 SEASON_TYPE_BY_PREFIX = {"002": "regular", "004": "playoffs", "005": "play_in"}
@@ -119,6 +119,7 @@ class GameResult:
     starters_info: dict
     sub_timing: dict
     kept_note: dict | None = None  # passed with noted checks (D14): kept, listed in the report
+    outcome: dict | None = None    # one row for the regression baseline and the hybrid-bug alarm (D15)
 
 
 def process_game(g: pd.Series, data: GameData) -> GameResult:
@@ -137,6 +138,12 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
         stints, ev, info = from_pbp(data.events, data.box, home, away, gid)
     method = stints.stint_method.iloc[0]
     checks = check_game(stints, ev, data.box, home, away, pb).assign(method=method)
+    # Shadow rebuild on every hybrid game (D15): the two builders disagreeing on the lineup checks is the
+    # cleanest sign of a bug in the hybrid. Its stints are not kept.
+    shadow_ok = None
+    if rotation_ok:
+        sh_stints, sh_ev, _ = from_pbp(data.events, data.box, home, away, gid)
+        shadow_ok = lineup_ok(check_game(sh_stints, sh_ev, data.box, home, away, pb))
 
     timing = {"pbp_subs": None, "pbp_subs_off": None, "rotation_changes": None, "rotation_unmatched": None,
               "rotation_unmatched_detail": ""}
@@ -151,7 +158,7 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
     if failed:
         worst = checks[checks.check.isin(failed)]
         q = {"game_id": gid, "season": g.season, "season_type": g.season_type,
-             "failed_checks": ",".join(sorted(failed)),
+             "failed_checks": ",".join(sorted(failed)), "group": failure_group(failed),
              "residuals": ";".join(f"{r.check}={r.residual:g}" for r in worst.itertuples()),
              "stint_method": method,
              "rebuild_attempted": method == "pbp_rebuild",
@@ -159,6 +166,7 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
              "rotation_unmatched": timing["rotation_unmatched"],
              "pbp_subs_off": timing["pbp_subs_off"],
              "pacers_game": PACERS in (home, away),
+             "shadow_rebuild_lineup_ok": shadow_ok,
              "starters": str({f"P{p}:{t}": v for (p, t), v in info.items()}) if info else ""}
 
     kept = None
@@ -172,4 +180,9 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
     pg = player_game(data.box, player_stints(stints, home, away), ev).assign(season=g.season,
                                                                               season_type=g.season_type)
     checks = checks.assign(season=g.season, season_type=g.season_type)
-    return GameResult(stints, pg, checks, q, info, timing, kept)
+    outcome = {"game_id": gid, "season": g.season, "season_type": g.season_type, "stint_method": method,
+               "outcome": "quarantined" if q else ("kept_with_notes" if kept else "pass"),
+               "group": q["group"] if q else "", "lineup_ok": lineup_ok(checks), "shadow_rebuild_lineup_ok": shadow_ok,
+               # D15 hybrid alarm: the rebuild gets the lineups right and the hybrid doesn't
+               "hybrid_bug": bool(method == "hybrid" and shadow_ok and not lineup_ok(checks))}
+    return GameResult(stints, pg, checks, q, info, timing, kept, outcome)

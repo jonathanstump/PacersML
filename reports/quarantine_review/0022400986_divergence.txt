@@ -1,0 +1,89 @@
+
+=== 0022400986 (2024-25) · builder pbp_rebuild · failing: minutes, plus_minus
+  minutes gaps > 1 s (ours - box): Obi Toppin +24.6 s, Enrique Freeman -25.0 s
+  minutes: Obi Toppin over +24.6 s, Enrique Freeman short -25.0 s; stretches with Obi Toppin on and Enrique Freeman off:
+     Q1 12:00.0 -> Q1 04:02.0   478.0 s
+     Q1 00:24.6 -> Q2 04:39.0   465.6 s
+     Q2 02:46.0 -> Q3 00:54.0   832.0 s
+     Q4 10:21.0 -> OT2 05:00.0   921.0 s
+   no stretch matches 24.6 s; candidate points (stretch end - 25 s, start + 25 s) with a dead ball within 3 s:
+   timeline around Q1 00:00.0:
+       Q1 00:02.9  seq  146  turnover     Bennedict Mathurin     B. Mathurin lost ball TURNOVER (1 TO)
+       Q1 00:02.9  seq  147  other        Jaylen Clark           J. Clark STEAL (1 STL)
+       Q1 00:01.0  seq  148  fg           Donte DiVincenzo       MISS D. DiVincenzo 36' floating 3PT
+       Q1 00:01.0  seq  149  rebound                             TEAM offensive REBOUND
+    >> Q2 12:00.0  seq  150  period_end                          Period End
+    >> Q2 12:00.0  seq  151  sub          Donte DiVincenzo       SUB out: D. DiVincenzo  IN Mike Conley / OUT Donte DiVincenzo
+    >> Q2 12:00.0  seq  152  sub          Jaylen Clark           SUB out: J. Clark  IN Rudy Gobert / OUT Jaylen Clark
+    >> Q2 12:00.0  seq  153  sub          Julius Randle          SUB out: J. Randle  IN Jaden McDaniels / OUT Julius Randle
+    >> Q2 12:00.0  seq  157  period_start                        Period Start
+       Q2 11:42.0  seq  158  fg           T.J. McConnell         T. McConnell driving Layup (4 PTS) (O. Toppin 1 AST)
+       our away lineup at Q1 00:00.0: T.J. McConnell, Thomas Bryant, Obi Toppin, Bennedict Mathurin, Ben Sheppard
+   timeline around OT1 00:24.6:
+       OT1 00:44.6  seq  643  fg           Anthony Edwards        MISS A. Edwards 24' step back 3PT
+       OT1 00:41.5  seq  644  rebound      Quenton Jackson        Q. Jackson REBOUND (Off:1 Def:1)
+       OT1 00:27.4  seq  645  fg           Obi Toppin             O. Toppin 25' 3PT pullup bank (31 PTS) (T. McConnell 12 AST)
+       OT1 00:26.6  seq  646  other                               MIN Timeout
+       OT1 00:26.6  seq  647  sub          Naz Reid               SUB out: N. Reid  IN Mike Conley / OUT Naz Reid
+       OT1 00:18.5  seq  649  foul         Quenton Jackson        Q. Jackson shooting personal FOUL (5 PF) (Edwards 2 FT)
+       OT1 00:18.5  seq  650  ft           Anthony Edwards        A. Edwards Free Throw 1 of 2 (37 PTS)
+       OT1 00:18.5  seq  651  sub          Mike Conley            SUB out: M. Conley  IN Nickeil Alexander-Walker / OUT Mike Conley
+       OT1 00:18.5  seq  653  ft           Anthony Edwards        A. Edwards Free Throw 2 of 2 (38 PTS)
+       our away lineup at OT1 00:24.6: T.J. McConnell, Thomas Bryant, Obi Toppin, Quenton Jackson, Ben Sheppard
+  plus_minus gaps (ours - box): Obi Toppin -3, Andrew Nembhard +2, Enrique Freeman +1
+  scoring plays in the same second as a sub involving those players: 8
+   timeline around Q1 04:02.0:
+       Q1 04:13.0  seq   89  fg           Donte DiVincenzo       MISS D. DiVincenzo 26' pullup 3PT
+       Q1 04:11.0  seq   90  rebound      Andrew Nembhard        A. Nembhard REBOUND (Off:0 Def:1)
+       Q1 04:06.0  seq   91  turnover     Tony Bradley           T. Bradley lost ball TURNOVER (1 TO)
+       Q1 04:06.0  seq   92  other        Anthony Edwards        A. Edwards STEAL (1 STL)
+    >> Q1 04:02.0  seq   93  fg           Anthony Edwards        A. Edwards driving floating Jump Shot (4 PTS)
+    >> Q1 04:02.0  seq   94  foul         Ben Sheppard           B. Sheppard shooting personal FOUL (1 PF) (Edwards 1 FT)
+    >> Q1 04:02.0  seq   95  sub          Rudy Gobert            SUB out: R. Gobert  IN Julius Randle / OUT Rudy Gobert
+    >> Q1 04:02.0  seq   96  sub          Obi Toppin             SUB out: O. Toppin  IN Jarace Walker / OUT Obi Toppin
+    >> Q1 04:02.0  seq   97  sub          Andrew Nembhard        SUB out: A. Nembhard  IN T.J. McConnell / OUT Andrew Nembhard
+    >> Q1 04:02.0  seq  101  ft           Anthony Edwards        A. Edwards Free Throw 1 of 1 (5 PTS)
+       Q1 03:49.0  seq  102  fg           Tony Bradley           T. Bradley Layup (4 PTS) (T. McConnell 1 AST)
+       our home lineup at Q1 04:02.0: Julius Randle, Donte DiVincenzo, Nickeil Alexander-Walker, Naz Reid, Anthony Edwards
+       our away lineup at Q1 04:02.0: T.J. McConnell, Tony Bradley, Quenton Jackson, Jarace Walker, Ben Sheppard
+   timeline around Q1 00:24.6:
+       Q1 00:34.1  seq  132  fg           T.J. McConnell         MISS T. McConnell driving Layup
+       Q1 00:33.0  seq  133  rebound      Tony Bradley           T. Bradley REBOUND (Off:1 Def:0)
+       Q1 00:33.0  seq  134  fg           Tony Bradley           MISS T. Bradley tip Layup
+       Q1 00:31.4  seq  135  rebound      Nickeil Alexander-Walker N. Alexander-Walker REBOUND (Off:0 Def:2)
+    >> Q1 00:24.6  seq  136  foul         Jarace Walker          J. Walker shooting personal FOUL (2 PF) (Randle 2 FT)
+    >> Q1 00:24.6  seq  137  ft           Julius Randle          MISS J. Randle Free Throw 1 of 2
+    >> Q1 00:24.6  seq  138  rebound                             TEAM offensive REBOUND
+    >> Q1 00:24.6  seq  139  sub          Jarace Walker          SUB out: J. Walker  IN Obi Toppin / OUT Jarace Walker
+    >> Q1 00:24.6  seq  140  sub          Tony Bradley           SUB out: T. Bradley  IN Bennedict Mathurin / OUT Tony Bradley
+    >> Q1 00:24.6  seq  141  sub          Quenton Jackson        SUB out: Q. Jackson  IN Thomas Bryant / OUT Quenton Jackson
+    >> Q1 00:24.6  seq  145  ft           Julius Randle          J. Randle Free Throw 2 of 2 (9 PTS)
+       our home lineup at Q1 00:24.6: Julius Randle, Donte DiVincenzo, Nickeil Alexander-Walker, Naz Reid, Jaylen Clark
+       our away lineup at Q1 00:24.6: T.J. McConnell, Thomas Bryant, Obi Toppin, Bennedict Mathurin, Ben Sheppard
+   timeline around Q3 07:57.0:
+       Q3 08:06.0  seq  337  fg           Donte DiVincenzo       D. DiVincenzo 24' 3PT  (8 PTS) (M. Conley 3 AST)
+    >> Q3 07:57.0  seq  338  foul         Rudy Gobert            R. Gobert flagrant-type-2 personal FOUL (1 PF) (Nembhard 2 F
+    >> Q3 07:57.0  seq  339  other        Rudy Gobert            Ejection R. Gobert
+    >> Q3 07:57.0  seq  340  foul         Andrew Nembhard        A. Nembhard technical FOUL (2 Tech)
+    >> Q3 07:57.0  seq  341  other        Andrew Nembhard        Ejection A. Nembhard
+    >> Q3 07:57.0  seq  342  sub          Rudy Gobert            SUB out: R. Gobert  IN Naz Reid / OUT Rudy Gobert
+    >> Q3 07:57.0  seq  343  sub          Andrew Nembhard        SUB out: A. Nembhard  IN Enrique Freeman / OUT Andrew Nembhard
+    >> Q3 07:57.0  seq  346  sub          Jarace Walker          SUB out: J. Walker  IN T.J. McConnell / OUT Jarace Walker
+    >> Q3 07:57.0  seq  348  ft           Mike Conley            M. Conley technical Free Throw 1 of 1 (3 PTS)
+    >> Q3 07:57.0  seq  349  ft           Enrique Freeman        E. Freeman flagrant Free Throw 1 of 2 (1 PTS)
+    >> Q3 07:57.0  seq  350  ft           Enrique Freeman        E. Freeman flagrant Free Throw 2 of 2 (2 PTS)
+    >> Q3 07:57.0  seq  351  sub          Enrique Freeman        SUB out: E. Freeman  IN Jarace Walker / OUT Enrique Freeman
+       Q3 07:50.0  seq  353  turnover     Tony Bradley           T. Bradley lost ball TURNOVER (3 TO)
+       Q3 07:50.0  seq  354  other        Anthony Edwards        A. Edwards STEAL (2 STL)
+       our home lineup at Q3 07:57.0: Mike Conley, Julius Randle, Donte DiVincenzo, Naz Reid, Anthony Edwards
+       our away lineup at Q3 07:57.0: T.J. McConnell, Tony Bradley, Obi Toppin, Bennedict Mathurin, Jarace Walker
+   timeline around Q3 00:54.0:
+       Q3 01:12.0  seq  425  fg           Ben Sheppard           B. Sheppard 24' 3PT  (3 PTS) (T. McConnell 8 AST)
+       Q3 01:00.0  seq  426  fg           Nickeil Alexander-Walker N. Alexander-Walker driving Layup (6 PTS)
+    >> Q3 00:54.0  seq  427  foul         Donte DiVincenzo       D. DiVincenzo personal FOUL (4 PF) (Jackson 2 FT)
+    >> Q3 00:54.0  seq  428  ft           Quenton Jackson        Q. Jackson Free Throw 1 of 2 (3 PTS)
+    >> Q3 00:54.0  seq  429  sub          Donte DiVincenzo       SUB out: D. DiVincenzo  IN Mike Conley / OUT Donte DiVincenzo
+    >> Q3 00:54.0  seq  430  sub          Obi Toppin             SUB out: O. Toppin  IN Jarace Walker / OUT Obi Toppin
+    >> Q3 00:54.0  seq  433  ft           Quenton Jackson        Q. Jackson Free Throw 2 of 2 (4 PTS)
+       our home lineup at Q3 00:54.0: Mike Conley, Nickeil Alexander-Walker, Naz Reid, Anthony Edwards, Jaylen Clark
+       our away lineup at Q3 00:54.0: T.J. McConnell, Thomas Bryant, Quenton Jackson, Jarace Walker, Ben Sheppard

@@ -1,24 +1,29 @@
-"""Rotation-only pass (D13): fetch gamerotation for downloaded games that don't have it yet.
+"""Rotation-only pass (D13, revised D15): fetch gamerotation for downloaded games that don't have it yet.
 
-The download chunks skip gamerotation while it is cooling down after 5 failures in a row, and cached games go by
-in seconds, so most games never got a call. This pass makes the calls instead: one request per try, the same
-3.5-4.0 s pace, up to ROTATION_TRIES tries per game in total (the ledger is shared with refresh.py), in rounds,
-so a game that failed gets its second try at least one round later.
+The download chunks never call gamerotation; this pass makes every call: one request per try, up to
+ROTATION_TRIES tries per game in total (the ledger is shared with refresh.py), in rounds, so a game that failed
+gets its second try at least one round later.
 
-Outage guard: after OUTAGE_STREAK failures in a row, check the same game's box score on stats.nba.com. If that
-fails too, the host is down, not gamerotation: those tries are taken back off the ledger, and the pass pauses
-5, 15, 30 minutes, then stops. Rests REST_S after every REST_EVERY requests, like the download chunks.
+Pace and throttle guard (D15): gamerotation throttles us on its own while other endpoints keep answering
+(2026-10-22: 13 of 14 calls timed out or 500'd, including games that had downloaded fine, while box scores
+answered in < 1 s). So:
+  - one gamerotation call every INTERVAL_S seconds (default 30);
+  - when a call fails, ask gamerotation for a CANARY game we already have. Canary answers -> the failure is the
+    game's own and counts as one of its tries. Canary fails too -> we are being throttled: the try is not
+    counted, and the pass backs off BACKOFF_S (30 min, 1 h, 2 h, 4 h), then stops.
 
 Resumable: the ledger and every rotation file are written per game. Run it when no other pull is running, then
 run refresh.py (normal mode) to process.
 
     python -u scripts/rotation_pass.py                       # all seasons with downloaded games
-    python -u scripts/rotation_pass.py --seasons 2024-25
+    python -u scripts/rotation_pass.py --seasons 2024-25 --interval 45
+    python -u scripts/rotation_pass.py --reset-throttled     # once: clear tries recorded before D15 (see below)
 """
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -32,21 +37,13 @@ from pacersml.data import cache  # noqa: E402
 from pacersml.data.http import Client, EndpointBlocked, EndpointError  # noqa: E402
 from refresh import ROTATION_TRIES, SEASONS, rotation_ledger  # noqa: E402
 
-import probe_endpoints  # noqa: E402
-
-OUTAGE_STREAK = 10
-PAUSES_S = (300, 900, 1800)
-REST_EVERY, REST_S = 400, 1800
+INTERVAL_S = 30
+BACKOFF_S = (1800, 3600, 7200, 14400)
+UNAVAILABLE = (EndpointError, EndpointBlocked, FileNotFoundError)
 
 
 def stamp() -> str:
     return datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
-
-
-def host_up(gid: str) -> bool:
-    """Is stats.nba.com answering for this game's box score? Separates an outage from gamerotation failing."""
-    box = next(p for p in probe_endpoints.probes(gid) if p[1] == "boxscoretraditionalv3")
-    return probe_endpoints.probe_one(*box)["result"] == "ok"
 
 
 def todo(season: str, ledger: dict) -> list[str]:
@@ -56,65 +53,83 @@ def todo(season: str, ledger: dict) -> list[str]:
             and ledger.get(g, 0) < ROTATION_TRIES]
 
 
+def canary(season: str) -> str | None:
+    rot = sorted((cache.RAW / season / "stats_rotation").glob("*.json.gz"))
+    return rot[0].name.split(".")[0] if rot else None
+
+
+def reset_throttled(seasons: list[str]) -> None:
+    """Tries recorded before D15 were made while gamerotation was throttling us, so they say nothing about the
+    games. Back the ledger up and clear it for games still without a rotation file."""
+    for season in seasons:
+        path, ledger = rotation_ledger(season)
+        if not ledger:
+            continue
+        shutil.copy(path, path.with_name("rotation_attempts_pre_d15.json"))
+        kept = {g: n for g, n in ledger.items() if cache.find_raw(season, ["stats_rotation"], g) is not None}
+        path.write_text(json.dumps(kept))
+        print(f"{season}: cleared {len(ledger) - len(kept)} recorded tries (backup rotation_attempts_pre_d15.json)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seasons", nargs="+", default=SEASONS)
+    ap.add_argument("--interval", type=float, default=INTERVAL_S, help="seconds between gamerotation calls")
+    ap.add_argument("--reset-throttled", action="store_true", help="clear pre-D15 tries, then exit")
     args = ap.parse_args()
+    if args.reset_throttled:
+        reset_throttled(args.seasons)
+        return 0
 
-    # one request per try, no endpoint cooldown: the outage guard below does that job here
-    c = Client(retries=1, cooldown_after=10**9)
-    rested_at = 0
+    # one request per try, no endpoint cooldown: the canary below decides whether a failure counts
+    c = Client(min_interval=args.interval, retries=1, cooldown_after=10**9)
+
+    def call(gid: str):
+        return c.stats("gamerotation", {"GameID": gid, "LeagueID": "00"}, timeout=10.0, host_level=False)
+
     for season in args.seasons:
         path, ledger = rotation_ledger(season)
+        ref = canary(season) or canary("2024-25")
         rnd = 0
         while games := todo(season, ledger):
             rnd += 1
-            n_ok = n_fail = 0
-            print(f"\n=== {season} round {rnd}: {len(games)} games without rotation @ {stamp()}", flush=True)
-            streak: list[str] = []
-            pauses = iter(PAUSES_S)
+            n_ok = n_fail = n_throttled = 0
+            print(f"\n=== {season} round {rnd}: {len(games)} games without rotation · canary {ref} @ {stamp()}",
+                  flush=True)
+            backoffs = iter(BACKOFF_S)
             i = 0
             while i < len(games):
                 gid = games[i]
-                if c.n_requests - rested_at >= REST_EVERY:
-                    print(f"  resting {REST_S}s after {REST_EVERY} requests @ {stamp()}", flush=True)
-                    time.sleep(REST_S)
-                    rested_at = c.n_requests
                 try:
-                    payload = c.stats("gamerotation", {"GameID": gid, "LeagueID": "00"},
-                                      timeout=10.0, host_level=False)
-                except (EndpointError, EndpointBlocked, FileNotFoundError):
-                    ledger[gid] = ledger.get(gid, 0) + 1
-                    streak.append(gid)
+                    payload = call(gid)
+                except UNAVAILABLE:
+                    c.blocked_hosts.clear()
+                    try:
+                        call(ref)
+                    except UNAVAILABLE:  # the canary fails too: throttled, the try doesn't count
+                        c.blocked_hosts.clear()
+                        n_throttled += 1
+                        wait = next(backoffs, None)
+                        if wait is None:
+                            print(f"  gamerotation still throttling after backoffs of {BACKOFF_S} s; "
+                                  f"stopping @ {stamp()} (resume later with the same command)")
+                            return 3
+                        print(f"  {gid}: failed and canary {ref} failed too: throttled, not counted; "
+                              f"backing off {wait}s @ {stamp()}", flush=True)
+                        time.sleep(wait)
+                        continue  # retry the same game
+                    ledger[gid] = ledger.get(gid, 0) + 1  # canary answered: this game's own failure
                     n_fail += 1
                 else:
                     cache.write_raw(payload, season, "stats_rotation", gid)
-                    streak, n_ok = [], n_ok + 1
-                    pauses = iter(PAUSES_S)
+                    n_ok += 1
+                    backoffs = iter(BACKOFF_S)
                 path.write_text(json.dumps(ledger))
                 i += 1
-
-                if len(streak) >= OUTAGE_STREAK:
-                    if host_up(gid):
-                        streak = []  # the host answers: these were gamerotation's own failures, they count
-                        continue
-                    for g in streak:  # an outage: take these tries back and redo them after the pause
-                        ledger[g] -= 1
-                    path.write_text(json.dumps(ledger))
-                    n_fail -= len(streak)
-                    i -= len(streak)
-                    streak = []
-                    c.blocked_hosts.clear()
-                    wait = next(pauses, None)
-                    if wait is None:
-                        print(f"  stats.nba.com still down after pauses of {PAUSES_S} s; stopping @ {stamp()}")
-                        return 3
-                    print(f"  stats.nba.com not answering box scores either; pausing {wait}s @ {stamp()}", flush=True)
-                    time.sleep(wait)
-
-                if i % 50 == 0:
-                    print(f"  {i}/{len(games)} · ok {n_ok} · failed {n_fail} @ {stamp()}", flush=True)
-            print(f"  round {rnd} done: ok {n_ok} · failed {n_fail}", flush=True)
+                if i % 25 == 0:
+                    print(f"  {i}/{len(games)} · ok {n_ok} · failed {n_fail} · throttled {n_throttled} @ {stamp()}",
+                          flush=True)
+            print(f"  round {rnd} done: ok {n_ok} · failed {n_fail} · throttled {n_throttled}", flush=True)
 
         n_rot = len(list((cache.RAW / season / "stats_rotation").glob("*.json.gz")))
         n_box = len(list((cache.RAW / season / "stats_box").glob("*.json.gz")))

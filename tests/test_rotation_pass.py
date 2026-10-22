@@ -11,48 +11,61 @@ from pacersml.data import cache  # noqa: E402
 from pacersml.data.http import EndpointError  # noqa: E402
 
 SEASON = "1999-00"
-GIDS = [f"00299000{i:02d}" for i in range(12)]
+GIDS = [f"00299000{i:02d}" for i in range(6)]
+CANARY = "0029900099"
 
 
-def setup(tmp_path, monkeypatch, outcomes, host):
+def setup(tmp_path, monkeypatch, answers):
+    """answers(gid, call_number) -> True (200) or False (failure)."""
     monkeypatch.setattr(cache, "RAW", tmp_path)
     for g in GIDS:
         p = cache.raw_path(SEASON, "stats_box", g)
         p.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(p, "wt") as f:
             json.dump({}, f)
+    cache.write_raw({}, SEASON, "stats_rotation", CANARY)
     calls = []
 
     def stats(self, endpoint, params, **kw):
-        calls.append(params["GameID"])
-        self.n_requests += 1
-        if next(outcomes):
+        gid = params["GameID"]
+        calls.append(gid)
+        if answers(gid, len(calls)):
             return {"ok": True}
         raise EndpointError("timeout")
     monkeypatch.setattr(rp.Client, "stats", stats)
-    monkeypatch.setattr(rp, "host_up", lambda gid: next(host))
     monkeypatch.setattr(rp.time, "sleep", lambda s: None)
-    monkeypatch.setattr(sys, "argv", ["rotation_pass", "--seasons", SEASON])
+    monkeypatch.setattr(sys, "argv", ["rotation_pass", "--seasons", SEASON, "--interval", "0"])
     return calls
 
 
 def ledger():
-    return json.loads((cache.RAW / SEASON / "rotation_attempts.json").read_text())
+    p = cache.RAW / SEASON / "rotation_attempts.json"
+    return json.loads(p.read_text()) if p.exists() else {}
 
 
-def test_outage_tries_are_taken_back_and_redone(tmp_path, monkeypatch):
-    outcomes = iter([False] * 10 + [True] * 12)        # 10 timeouts during an outage, then everything answers
-    calls = setup(tmp_path, monkeypatch, outcomes, iter([False]))
+def test_throttled_failures_are_not_counted_and_the_game_is_retried(tmp_path, monkeypatch):
+    # calls 1-2: the first game and the canary both fail (throttled); everything answers afterwards
+    calls = setup(tmp_path, monkeypatch, lambda gid, n: n > 2)
     assert rp.main() == 0
-    assert calls[:10] == GIDS[:10] and calls[10:] == GIDS          # the 10 are redone after the pause
+    assert calls[:3] == [GIDS[0], CANARY, GIDS[0]]
     assert all(v == 0 for v in ledger().values())
-    assert len(list((tmp_path / SEASON / "stats_rotation").glob("*.json.gz"))) == 12
+    assert len(list((tmp_path / SEASON / "stats_rotation").glob("*.json.gz"))) == len(GIDS) + 1
 
 
-def test_real_rotation_failures_count_and_get_a_second_round(tmp_path, monkeypatch):
-    outcomes = iter([False] * 12 + [False] * 2 + [True] * 10)  # host up; round 2 recovers 10 of 12
-    calls = setup(tmp_path, monkeypatch, outcomes, iter([True, True]))
+def test_game_failure_counts_when_canary_answers_and_gets_a_second_round(tmp_path, monkeypatch):
+    # GIDS[1] fails on its first try only; the canary always answers
+    seen = {}
+
+    def answers(gid, n):
+        seen[gid] = seen.get(gid, 0) + 1
+        return gid != GIDS[1] or seen[gid] > 1
+    setup(tmp_path, monkeypatch, answers)
     assert rp.main() == 0
-    assert len(calls) == 24
-    led = ledger()
-    assert sorted(led.values()) == [1] * 10 + [2] * 2           # two games used both tries
+    assert ledger() == {GIDS[1]: 1}
+    assert rp.cache.find_raw(SEASON, ["stats_rotation"], GIDS[1]) is not None
+
+
+def test_stops_after_all_backoffs(tmp_path, monkeypatch):
+    setup(tmp_path, monkeypatch, lambda gid, n: False)
+    assert rp.main() == 3
+    assert all(v == 0 for v in ledger().values())

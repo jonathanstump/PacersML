@@ -123,3 +123,37 @@ def test_plus_minus_note_needs_a_sub_at_a_technical_ft():
     b.loc[b.person_id == 14, "plus_minus"] += 1                      # off by 1, but no technical FT in the game
     r = process_game(game(), GameData(b, game_rows(), rotation()))
     assert r.quarantine is not None and "plus_minus" in r.quarantine["failed_checks"]
+
+
+def test_count_gap_kept_when_points_match_and_possessions_within_tolerance():
+    b = full_box()
+    b.loc[b.person_id == 12, "dreb"] = 0                             # team rebound total differs by one
+    g = game().copy()
+    g["pbpstats_home_id"], g["pbpstats_away_id"] = HOME, AWAY
+    g["pbpstats_home_poss"], g["pbpstats_away_poss"] = 3, 3          # our toy stints: 3 and 3
+    r = process_game(g, GameData(b, game_rows(), rotation()))
+    assert r.quarantine is None and "possessions within 2%" in r.kept_note["detail"]
+    g["pbpstats_home_poss"] = 10                                     # possessions far off: quarantined
+    r = process_game(g, GameData(b, game_rows(), rotation()))
+    assert r.quarantine is not None and r.quarantine["group"] == "A"
+
+
+def test_shadow_rebuild_flags_hybrid_bug():
+    rot = rotation()
+    rot.loc[rot.person_id == 16, "in_sec"] = 0                       # rotation: 16 starts instead of 15
+    rot.loc[rot.person_id == 15, "in_sec"] = 30
+    r = process_game(game(), GameData(full_box(), game_rows(), rot))
+    assert r.outcome["stint_method"] == "hybrid" and r.outcome["shadow_rebuild_lineup_ok"]
+    assert not r.outcome["lineup_ok"] and r.outcome["hybrid_bug"]
+    clean = process_game(game(), GameData(full_box(), game_rows(), rotation()))
+    assert clean.outcome["outcome"] == "pass" and not clean.outcome["hybrid_bug"]
+
+
+def test_regression_is_a_pass_or_kept_game_now_quarantined():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    from refresh import find_regressions
+    base = pd.DataFrame({"game_id": ["a", "b", "c", "d"], "outcome": ["pass", "kept_with_notes", "quarantined", "pass"]})
+    now = pd.DataFrame({"game_id": ["a", "b", "c", "e"], "outcome": ["quarantined", "quarantined", "quarantined", "quarantined"]})
+    assert find_regressions(base, now) == ["a", "b"]

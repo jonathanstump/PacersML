@@ -1,0 +1,84 @@
+
+=== 0042400306 (2024-25) · builder pbp_rebuild · failing: plus_minus
+  plus_minus gaps (ours - box): Karl-Anthony Towns -1, Josh Hart +1
+  scoring plays in the same second as a sub involving those players: 11
+   timeline around Q1 04:46.0:
+       Q1 05:05.0  seq   59  fg           Karl-Anthony Towns     MISS K. Towns 26' 3PT
+       Q1 05:03.0  seq   60  rebound      Mitchell Robinson      M. Robinson REBOUND (Off:5 Def:0)
+       Q1 05:00.0  seq   61  fg           Karl-Anthony Towns     K. Towns cutting DUNK (2 PTS) (J. Brunson 2 AST)
+    >> Q1 04:46.0  seq   62  fg           Myles Turner           M. Turner cutting finger roll Layup (5 PTS) (T. Haliburton 3
+    >> Q1 04:46.0  seq   63  foul         OG Anunoby             O. Anunoby shooting personal FOUL (1 PF) (Turner 1 FT)
+    >> Q1 04:46.0  seq   64  sub          OG Anunoby             SUB out: O. Anunoby  IN Miles McBride / OUT OG Anunoby
+    >> Q1 04:46.0  seq   65  sub          Karl-Anthony Towns     SUB out: K. Towns  IN Josh Hart / OUT Karl-Anthony Towns
+    >> Q1 04:46.0  seq   68  ft           Myles Turner           M. Turner Free Throw 1 of 1 (6 PTS)
+       Q1 04:26.0  seq   69  fg           Mikal Bridges          M. Bridges driving finger roll Layup (5 PTS) (J. Hart 1 AST)
+       our home lineup at Q1 04:46.0: Myles Turner, Andrew Nembhard, Obi Toppin, Tyrese Haliburton, Bennedict Mathurin
+       our away lineup at Q1 04:46.0: Josh Hart, Mikal Bridges, Jalen Brunson, Mitchell Robinson, Miles McBride
+   timeline around Q1 00:26.3:
+       Q1 00:46.2  seq  117  fg           T.J. McConnell         MISS T. McConnell 11' fadeaway Shot
+       Q1 00:42.1  seq  118  rebound      Miles McBride          M. McBride REBOUND (Off:0 Def:2)
+       Q1 00:30.3  seq  119  foul         Aaron Nesmith          A. Nesmith personal FOUL (2 PF)
+       Q1 00:30.3  seq  120  sub          Aaron Nesmith          SUB out: A. Nesmith  IN Bennedict Mathurin / OUT Aaron Nesmith
+    >> Q1 00:26.3  seq  122  foul         Ben Sheppard           B. Sheppard shooting personal FOUL (1 PF) (Wright 2 FT)
+    >> Q1 00:26.3  seq  123  ft           Delon Wright           D. Wright Free Throw 1 of 2 (1 PTS)
+    >> Q1 00:26.3  seq  124  sub          Ben Sheppard           SUB out: B. Sheppard  IN Tyrese Haliburton / OUT Ben Sheppard
+    >> Q1 00:26.3  seq  125  sub          Karl-Anthony Towns     SUB out: K. Towns  IN Mitchell Robinson / OUT Karl-Anthony Towns
+    >> Q1 00:26.3  seq  128  ft           Delon Wright           D. Wright Free Throw 2 of 2 (2 PTS)
+       our home lineup at Q1 00:26.3: T.J. McConnell, Pascal Siakam, Obi Toppin, Tyrese Haliburton, Bennedict Mathurin
+       our away lineup at Q1 00:26.3: Delon Wright, Josh Hart, Mitchell Robinson, Landry Shamet, Miles McBride
+   timeline around Q2 06:36.0:
+       Q2 06:50.0  seq  187  foul         Myles Turner           M. Turner shooting personal FOUL (1 PF) (Towns 2 FT)
+       Q2 06:50.0  seq  188  ft           Karl-Anthony Towns     K. Towns Free Throw 1 of 2 (5 PTS)
+       Q2 06:50.0  seq  189  sub          Ben Sheppard           SUB out: B. Sheppard  IN Aaron Nesmith / OUT Ben Sheppard
+       Q2 06:50.0  seq  191  ft           Karl-Anthony Towns     K. Towns Free Throw 2 of 2 (6 PTS)
+       Q2 06:42.0  seq  192  other        Mikal Bridges          M. Bridges kicked ball VIOLATION
+       Q2 06:42.0  seq  193  sub          Karl-Anthony Towns     SUB out: K. Towns  IN Mitchell Robinson / OUT Karl-Anthony Towns
+    >> Q2 06:36.0  seq  195  foul         Josh Hart              J. Hart personal FOUL (3 PF)
+    >> Q2 06:36.0  seq  196  sub          Josh Hart              SUB out: J. Hart  IN Karl-Anthony Towns / OUT Josh Hart
+    >> Q2 06:36.0  seq  198  foul         Mikal Bridges          M. Bridges away-from-play personal FOUL (1 PF) (Haliburton 1
+    >> Q2 06:36.0  seq  199  ft           Tyrese Haliburton      T. Haliburton away-from-play Free Throw 1 of 1 (4 PTS)
+       Q2 06:31.0  seq  200  fg           Obi Toppin             MISS O. Toppin 26' 3PT
+       Q2 06:28.0  seq  201  rebound      OG Anunoby             O. Anunoby REBOUND (Off:0 Def:2)
+       our home lineup at Q2 06:36.0: Myles Turner, Andrew Nembhard, Obi Toppin, Tyrese Haliburton, Aaron Nesmith
+       our away lineup at Q2 06:36.0: Karl-Anthony Towns, OG Anunoby, Mikal Bridges, Jalen Brunson, Mitchell Robinson
+   timeline around Q3 04:06.0:
+       Q3 04:11.0  seq  351  fg           Miles McBride          MISS M. McBride 26' pullup 3PT
+       Q3 04:11.0  seq  352  rebound      Andrew Nembhard        A. Nembhard REBOUND (Off:0 Def:2)
+    >> Q3 04:06.0  seq  353  foul         Mikal Bridges          M. Bridges shooting personal FOUL (3 PF) (Bryant 2 FT)
+    >> Q3 04:06.0  seq  354  ft           Thomas Bryant          T. Bryant Free Throw 1 of 2 (10 PTS)
+    >> Q3 04:06.0  seq  355  sub          Aaron Nesmith          SUB out: A. Nesmith  IN Ben Sheppard / OUT Aaron Nesmith
+    >> Q3 04:06.0  seq  356  sub          Karl-Anthony Towns     SUB out: K. Towns  IN Josh Hart / OUT Karl-Anthony Towns
+    >> Q3 04:06.0  seq  359  ft           Thomas Bryant          T. Bryant Free Throw 2 of 2 (11 PTS)
+       Q3 03:49.0  seq  360  sub          Tyrese Haliburton      SUB out: T. Haliburton  IN T.J. McConnell / OUT Tyrese Haliburton
+       Q3 03:46.0  seq  362  foul         T.J. McConnell         T. McConnell personal FOUL (1 PF)
+       our home lineup at Q3 04:06.0: Pascal Siakam, Thomas Bryant, Andrew Nembhard, Tyrese Haliburton, Ben Sheppard
+       our away lineup at Q3 04:06.0: Josh Hart, Mikal Bridges, Jalen Brunson, Mitchell Robinson, Miles McBride
+   timeline around Q3 01:18.0:
+       Q3 01:38.0  seq  383  rebound      Thomas Bryant          T. Bryant REBOUND (Off:1 Def:1)
+       Q3 01:27.0  seq  384  fg           Thomas Bryant          MISS T. Bryant 27' 3PT
+       Q3 01:24.0  seq  385  rebound      Miles McBride          M. McBride REBOUND (Off:0 Def:3)
+    >> Q3 01:18.0  seq  386  foul         Aaron Nesmith          A. Nesmith shooting personal FOUL (4 PF) (McBride 2 FT)
+    >> Q3 01:18.0  seq  387  ft           Miles McBride          M. McBride Free Throw 1 of 2 (1 PTS)
+    >> Q3 01:18.0  seq  388  sub          Aaron Nesmith          SUB out: A. Nesmith  IN Jarace Walker / OUT Aaron Nesmith
+    >> Q3 01:18.0  seq  389  sub          Mitchell Robinson      SUB out: M. Robinson  IN Karl-Anthony Towns / OUT Mitchell Robinson
+    >> Q3 01:18.0  seq  392  ft           Miles McBride          M. McBride Free Throw 2 of 2 (2 PTS)
+       Q3 00:58.9  seq  393  turnover     Pascal Siakam          P. Siakam bad pass TURNOVER (1 TO)
+       Q3 00:58.9  seq  394  other        Josh Hart              J. Hart STEAL (2 STL)
+       our home lineup at Q3 01:18.0: T.J. McConnell, Pascal Siakam, Thomas Bryant, Jarace Walker, Ben Sheppard
+       our away lineup at Q3 01:18.0: Delon Wright, Karl-Anthony Towns, OG Anunoby, Josh Hart, Miles McBride
+   timeline around Q4 01:52.0:
+       Q4 02:12.0  seq  537  fg           Obi Toppin             MISS O. Toppin 3PT
+       Q4 02:07.0  seq  538  rebound      Mikal Bridges          M. Bridges REBOUND (Off:0 Def:1)
+       Q4 02:00.0  seq  539  fg           OG Anunoby             MISS O. Anunoby 9' driving floating Shot - blocked
+       Q4 02:00.0  seq  540  other        Obi Toppin             O. Toppin BLOCK (3 BLK)
+       Q4 01:56.0  seq  541  rebound      Tyrese Haliburton      T. Haliburton REBOUND (Off:0 Def:6)
+    >> Q4 01:52.0  seq  542  foul         Karl-Anthony Towns     K. Towns shooting personal FOUL (4 PF) (Siakam 2 FT)
+    >> Q4 01:52.0  seq  543  ft           Pascal Siakam          P. Siakam Free Throw 1 of 2 (28 PTS)
+    >> Q4 01:52.0  seq  544  sub          OG Anunoby             SUB out: O. Anunoby  IN Pacôme Dadiet / OUT OG Anunoby
+    >> Q4 01:52.0  seq  545  sub          Jalen Brunson          SUB out: J. Brunson  IN Precious Achiuwa / OUT Jalen Brunson
+    >> Q4 01:52.0  seq  546  sub          Mikal Bridges          SUB out: M. Bridges  IN Tyler Kolek / OUT Mikal Bridges
+    >> Q4 01:52.0  seq  547  sub          Karl-Anthony Towns     SUB out: K. Towns  IN Ariel Hukporti / OUT Karl-Anthony Towns
+    >> Q4 01:52.0  seq  552  ft           Pascal Siakam          P. Siakam Free Throw 2 of 2 (29 PTS)
+       Q4 01:43.0  seq  553  fg           Landry Shamet          L. Shamet 25' 3PT  (6 PTS) (T. Kolek 1 AST)
+       our home lineup at Q4 01:52.0: Pascal Siakam, Andrew Nembhard, Obi Toppin, Tyrese Haliburton, Ben Sheppard
+       our away lineup at Q4 01:52.0: Landry Shamet, Precious Achiuwa, Ariel Hukporti, Tyler Kolek, Pacôme Dadiet

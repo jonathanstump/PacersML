@@ -1,0 +1,4 @@
+
+=== 0022400217 (2024-25) · builder pbp_rebuild · failing: pbp_counts
+  pbp_counts: Anthony Black (team 1610612753): fga +1, reb +1  (ours - box)
+  team totals (ours - box): 1610612753 fga +1, reb +1
