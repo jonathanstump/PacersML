@@ -117,7 +117,8 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
             return False
         gid = g.game_id
         has_rot = cache.find_raw(season, ["stats_rotation"], gid) is not None
-        try_rot = (use_rotation and not has_rot and ledger.get(gid, 0) < ROTATION_TRIES
+        # download chunks leave gamerotation to scripts/rotation_pass.py, which waits out failures properly (D13)
+        try_rot = (use_rotation and not fetch_only and not has_rot and ledger.get(gid, 0) < ROTATION_TRIES
                    and time.monotonic() >= c.cooling_until.get("stats/gamerotation", 0))
         if fetch_only and not try_rot and all(cache.find_raw(season, [k for k, _ in f], gid) is not None
                                               for f in (BOX_FETCHERS, PBP_FETCHERS)):

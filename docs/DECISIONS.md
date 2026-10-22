@@ -363,3 +363,4 @@ the download finishes, before processing:
 - rests 30 min after every 400 requests;
 - `refresh.py` does not freeze a training season while any of its games still has rotation tries left.
 `scripts/backfill.py` now runs download chunks → rotation pass → processing refresh.
+Download chunks no longer call gamerotation at all (2026-10-22); the rotation pass makes every call.
