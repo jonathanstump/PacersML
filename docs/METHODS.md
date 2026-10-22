@@ -178,7 +178,7 @@ C has no offensive possessions, so offensive rates are NaN rather than 0.
 
 | check | rule | hard? |
 |---|---|---|
-| minutes | each player's stint seconds within ±1 s of box MIN | yes (lineup) |
+| minutes | each player's stint seconds within ±1 s of box MIN; a gap up to 3 s passes **with a note** when it's unpaired (no teammate off by > 1 s the other way, D17) | yes (lineup) |
 | floor_five | every stint has exactly 5 per team | yes (lineup) |
 | game_seconds | total stint seconds = 2880 + 300·OT (±1 s) | yes (lineup) |
 | plus_minus | each player's stint point differential = box +/- exactly; ±2 passes **with a note** only when minutes pass and a substitution shares a second with a technical FT (D14) | yes (lineup) |
@@ -235,6 +235,12 @@ in the run summary and in `site_export/quarantine.json`.
 - NBA's player POSS definition isn't documented. Player gaps are definitional (same games, no sampling), so
   individual gaps of a possession or two are expected; a lopsided over/under split is the signal to look for.
 - The pbpstats comparison is reported, not enforced; pbpstats uses its own possession rules.
+- The 3 s minutes note assumes our team seconds are exact (five on the floor for the whole game), so any lineup
+  error shows as two teammates off in opposite directions. If floor_five or game_seconds also fail, that pairing
+  logic doesn't hold, and those checks quarantine the game anyway.
+- Log order within one second is NBA's, not the true order. A sub logged before a foul in the same second moves
+  that foul's free throws to the wrong lineup. A trial rule that moves such subs after live-play events
+  (`refresh.py --reorder-subs`, D17) is not adopted until it has been tested against the baseline.
 
 **Questions you should be able to answer.**
 1. Why is plus-minus the strongest single check on lineups?
@@ -243,3 +249,5 @@ in the run summary and in `site_export/quarantine.json`.
 4. A game's Pacers rebound total matches the box, but one Pacer has 2 rebounds too many and another 2 too few.
    Is it kept, and what does that do to team rebound rate vs player rebound rate?
 5. A hybrid game fails the minutes check and its shadow rebuild fails too. Does an alarm fire, and why?
+6. One player is 2.5 s over his box minutes and a teammate is 2.5 s under. Is the game kept? What if only the
+   first player is off?

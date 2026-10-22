@@ -200,3 +200,44 @@ def merge_live_subs(ev: pd.DataFrame) -> pd.DataFrame:
             drop.add(max(i, o))
         # unpaired halves stay as-is (in_id or out_id == 0) and surface in validation
     return ev.drop(index=list(drop)).reset_index(drop=True)
+
+
+LIVE_PLAY = ("fg", "rebound", "turnover", "foul", "jumpball")
+
+
+def reorder_same_second_subs(ev: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Experimental (testing, not adopted): substitutions only happen at dead balls, and a non-technical foul
+    or other live-play event can't follow a substitution in the same second, so when the log puts one there the
+    order is wrong (0042400306, Q2 06:36). Within a same-second cluster, each sub moves to just after the last
+    live-play event (fg, rebound, turnover, non-technical foul, jump ball) logged after it, as long as no
+    free throw or technical foul lies in between (subs between free throws are real). Returns the events with
+    seq renumbered in the new order, and how many subs moved."""
+    ev = ev.reset_index(drop=True)
+    order, moved, i, n = [], 0, 0, len(ev)
+    while i < n:
+        j = i
+        while j + 1 < n and ev.period.iat[j + 1] == ev.period.iat[i] and ev.elapsed.iat[j + 1] == ev.elapsed.iat[i]:
+            j += 1
+        rows = list(range(i, j + 1))
+        k = 0
+        while k < len(rows):
+            r = rows[k]
+            if ev.etype.iat[r] != "sub":
+                k += 1
+                continue
+            last_live = None
+            for m in range(k + 1, len(rows)):
+                e = ev.iloc[rows[m]]
+                if e.etype == "ft" or (e.etype == "foul" and e.technical) or e.etype in ("period_start", "period_end"):
+                    break
+                if e.etype in LIVE_PLAY:  # rebounds of free throws lie past the stop, so these are live
+                    last_live = m
+            if last_live is None:
+                k += 1
+                continue
+            rows.insert(last_live, rows.pop(k))  # lands right after the live event; re-examine the row now at k
+            moved += 1
+        order += rows
+        i = j + 1
+    out = ev.iloc[order].reset_index(drop=True)
+    return out.assign(seq=range(len(out))), moved

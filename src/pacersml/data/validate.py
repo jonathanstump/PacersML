@@ -2,6 +2,9 @@
 
 Per-game checks (hard = a failure quarantines the game, D3/D11):
     minutes       player seconds on the floor from stints vs box MIN, |diff| <= 1 s            hard, lineup
+                  exception (D17): a gap up to 3 s passes, noted, when it is unpaired: no teammate is off by
+                  more than 1 s the other way. A lineup error always shows as a pair (our team seconds are
+                  fixed at 5 x game length), so an unpaired gap is box rounding. Paired gaps always fail
     floor_five    every stint has exactly 5 players per team                                hard, lineup
     game_seconds  sum of stint seconds == 2880 + 300 * OT periods (± 1 s)                   hard, lineup
     plus_minus    player (pts for - pts against) over his stints == box +/-                  hard, lineup
@@ -34,6 +37,7 @@ POSS_TOL = 0.02            # D1 / D5
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
 DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
 LINEUP_CHECKS = ("minutes", "floor_five", "game_seconds", "plus_minus")
+MIN_NOTE_MAX = 3.0         # D17: unpaired single-player minutes gap kept with a note
 PM_NOTE_MAX = 2            # D14: plus-minus gap kept with a note when a sub shares a second with a technical FT
 
 
@@ -48,6 +52,13 @@ def sub_at_technical_ft(ev: pd.DataFrame) -> bool:
     subs = ev[ev.etype == "sub"]
     keys = set(zip(subs.period, subs.elapsed.round(0)))
     return any((p, t) in keys for p, t in zip(tft.period, tft.elapsed.round(0)))
+
+
+def paired_minutes_gap(diff: pd.Series, team_of: pd.Series) -> bool:
+    """Two teammates off by more than 1 s in opposite directions: the signature of a misplaced sub (D17)."""
+    big = diff[diff.abs() > 1.0]
+    return any((big[team_of.reindex(big.index) == t] > 0).any() and (big[team_of.reindex(big.index) == t] < 0).any()
+               for t in team_of.unique())
 
 
 def pbp_player_counts(ev: pd.DataFrame) -> pd.DataFrame:
@@ -78,7 +89,10 @@ def check_game(stints, ev, box_df, home, away, pbpstats_poss: dict | None = None
     resid = max(diff.abs().max(), on.seconds.reindex(extra).max() if len(extra) else 0)
     worst = diff.abs().sort_values(ascending=False).head(3)
     minutes_ok = resid <= 1.0
-    rows.append(_row(gid, "minutes", minutes_ok, resid, ";".join(f"{p}:{d:+.1f}" for p, d in diff[worst.index].items())))
+    min_noted = not minutes_ok and not len(extra) and resid <= MIN_NOTE_MAX and not paired_minutes_gap(diff, b.team_id)
+    rows.append(_row(gid, "minutes", minutes_ok or min_noted, resid,
+                     ("unpaired gap <= 3 s; " if min_noted else "")
+                     + ";".join(f"{p}:{d:+.1f}" for p, d in diff[worst.index].items()), noted=min_noted))
 
     bad = ((stints.home_ids.map(len) != 5) | (stints.away_ids.map(len) != 5)).sum()
     rows.append(_row(gid, "floor_five", bad == 0, bad, f"{bad} of {len(stints)} stints"))

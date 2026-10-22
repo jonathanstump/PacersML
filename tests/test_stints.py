@@ -129,3 +129,24 @@ def test_bench_technical_and_ejection_are_not_starter_evidence():
              dict(elapsed=720, etype="period_end")]
     starters, _ = infer_starters(ev(rows), HOME, box()[box().team_id == HOME], set())
     assert starters == {11, 12, 13, 14, 15}
+
+
+def test_same_second_reorder_moves_sub_after_a_live_foul_but_not_past_a_free_throw():
+    from toy import ev
+
+    from pacersml.data.normalize import reorder_same_second_subs
+    rows = [dict(etype="period_start"),
+            dict(elapsed=60, team_id=HOME, etype="sub", in_id=16, out_id=14),     # logged before the foul
+            dict(elapsed=60, team_id=HOME, person_id=15, etype="foul"),
+            dict(elapsed=60, team_id=AWAY, person_id=22, etype="ft", value=1, made=True, points=1, ft_num=1, ft_of=1),
+            dict(elapsed=720, etype="period_end")]
+    out, moved = reorder_same_second_subs(ev(rows))
+    assert moved == 1 and out.etype.tolist() == ["period_start", "foul", "sub", "ft", "period_end"]
+    assert out.seq.tolist() == list(range(5))
+    stints, _, _ = from_hybrid(out, rotation(), HOME, AWAY, GAME)
+    assert stints.away_pts.tolist() == [1, 0]                    # the FT goes to the lineup at the foul, with 14
+    _, moved = reorder_same_second_subs(game_rows())             # sub between free throws: real, stays put
+    assert moved == 0
+    tech = [dict(r) for r in rows]
+    tech[2].update(technical=True, foul_type="technical")         # technical fouls happen at dead balls: no move
+    assert reorder_same_second_subs(ev(tech))[1] == 0

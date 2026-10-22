@@ -488,3 +488,37 @@ then process once; (3) process now and skip the pass.
   accepts with `--accept-regressions`.
 - Group A tolerance details (D15) confirmed as built: 2% of pbpstats per team; no pbpstats number → quarantined
   unless every team total matches; no per-player cap.
+
+---
+
+## D17 — Pacers divergence review: minutes note, 0022400986 stays quarantined, same-second reorder trial (2026-10-22, Phase 1)
+
+From Jonathan's read of the five Pacers divergence timelines (`reports/quarantine_review/`).
+
+**Decisions (Jonathan):**
+- **Minutes tolerance:** a single player's gap of up to **3 s** passes, with a note, when it's unpaired (no
+  teammate off by more than 1 s in the other direction). Paired gaps always fail and are investigated, whatever
+  their size. Reasoning: every real missing-substitution case so far has been tens of seconds with a matching
+  opposite gap on a teammate. Our team seconds are fixed at 5 × game length, so a lineup error always shows as a
+  pair; an unpaired gap is box rounding. Case: 0022401055 (LeBron +1.4 s, no matching gap).
+- **0022400986 stays quarantined.** Toppin +24.6 s matches the end of Q1 (00:24.6 to 0:00); Freeman −25.0 s,
+  not −24.6; and the plus-minus gaps run through the Q3 07:57 ejection sequence (a flagrant 2, two ejections,
+  Freeman checking in only to shoot Nembhard's free throws, then leaving). The numbers don't reconcile into one
+  fix, and it's one regular-season game.
+- **0022400933:** a substitution missing from NBA's play-by-play (Sheppard on for Nesmith from Q2 03:26 to 01:47,
+  99 s; plus-minus Nesmith −3 / Sheppard +3). Not a parser bug. Waits for the rotation file (D16 step 2).
+- **0022400217** stays quarantined under D15 as confirmed: team points match, but Orlando's possessions are 97
+  vs pbpstats' 95 (2.1% > 2%). The D14 Group A rule was amended by D15, and that amendment is what's implemented.
+- **Group C repairs:** wait for D16 steps 2–3. For games still failing after that, an inference-based repair is
+  accepted only when a single substitution explains the minutes gap **and** plus-minus then passes too.
+
+**Under test (not adopted): same-second reorder, a proposed D8 amendment.** 0042400306, Q2 06:36: the log shows
+Hart's foul, Hart subbed out for Towns, then Bridges' away-from-play foul and Haliburton's 1 free throw. Our rule
+(credit the lineup at the foul) gives that point to the lineup with Towns; NBA's box gives it to Hart (Towns −1,
+Hart +1). Personal fouls only happen in live play and substitutions only at dead balls, so a personal foul logged
+after a sub in the same second means the log order is wrong. Trial rule: within a same-second cluster, a sub
+moves to just after the last live-play event logged after it (field goal, rebound, turnover, non-technical foul,
+jump ball), stopping at any free throw or technical foul (subs between free throws are real; technicals happen
+at dead balls). Code: `normalize.reorder_same_second_subs`, `refresh.py --reorder-subs`.
+Acceptance test: run it with `--no-write` against the D16 step-1 baseline. Adopt only if it fixes games and
+breaks none. If adopted, it's logged as a D8 amendment with this reasoning.

@@ -15,6 +15,7 @@ from pacersml.data.validate import check_game, failure_group, hard_failures, lin
 PACERS = 1610612754
 SEASON_TYPE_BY_PREFIX = {"002": "regular", "004": "playoffs", "005": "play_in"}
 UNAVAILABLE = (EndpointBlocked, EndpointError, FileNotFoundError)
+REORDER_SUBS = False  # trial of the same-second sub reorder (D8 amendment under test); refresh --reorder-subs
 
 
 @dataclass
@@ -130,6 +131,10 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
     if pd.notna(g.get("pbpstats_home_poss")):
         pb = {int(g.pbpstats_home_id): int(g.pbpstats_home_poss), int(g.pbpstats_away_id): int(g.pbpstats_away_poss)}
 
+    events, n_moved = data.events, 0
+    if REORDER_SUBS:
+        events, n_moved = normalize.reorder_same_second_subs(events)
+    data = GameData(data.box, events, data.rotation, data.sources)
     periods = sorted(data.events.period.unique())
     rotation_ok = usable_rotation(data.rotation, periods, home, away)
     if rotation_ok:
@@ -184,5 +189,6 @@ def process_game(g: pd.Series, data: GameData) -> GameResult:
                "outcome": "quarantined" if q else ("kept_with_notes" if kept else "pass"),
                "group": q["group"] if q else "", "lineup_ok": lineup_ok(checks), "shadow_rebuild_lineup_ok": shadow_ok,
                # D15 hybrid alarm: the rebuild gets the lineups right and the hybrid doesn't
-               "hybrid_bug": bool(method == "hybrid" and shadow_ok and not lineup_ok(checks))}
+               "hybrid_bug": bool(method == "hybrid" and shadow_ok and not lineup_ok(checks)),
+               "subs_reordered": n_moved}
     return GameResult(stints, pg, checks, q, info, timing, kept, outcome)

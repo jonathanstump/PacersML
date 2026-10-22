@@ -157,3 +157,16 @@ def test_regression_is_a_pass_or_kept_game_now_quarantined():
     base = pd.DataFrame({"game_id": ["a", "b", "c", "d"], "outcome": ["pass", "kept_with_notes", "quarantined", "pass"]})
     now = pd.DataFrame({"game_id": ["a", "b", "c", "e"], "outcome": ["quarantined", "quarantined", "quarantined", "quarantined"]})
     assert find_regressions(base, now) == ["a", "b"]
+
+
+def test_unpaired_minutes_gap_up_to_3s_kept_with_note_paired_gap_fails():
+    b = full_box()
+    b.loc[b.person_id == 15, "seconds"] = 722                        # one player off by 2 s, nobody the other way
+    r = process_game(game(), GameData(b, game_rows(), rotation()))
+    assert r.quarantine is None and r.kept_note["checks"] == "minutes"
+    b.loc[b.person_id == 15, "seconds"] = 724                        # 4 s: over the 3 s note limit
+    assert "minutes" in process_game(game(), GameData(b, game_rows(), rotation())).quarantine["failed_checks"]
+    b = full_box()
+    b.loc[b.person_id == 14, "seconds"] = 62                         # the sub 2 s later: a teammate pair
+    b.loc[b.person_id == 16, "seconds"] = 658
+    assert "minutes" in process_game(game(), GameData(b, game_rows(), rotation())).quarantine["failed_checks"]

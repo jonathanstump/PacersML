@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import pandas as pd  # noqa: E402
 
-from pacersml.data import cache  # noqa: E402
+from pacersml.data import cache, pipeline  # noqa: E402
 from pacersml.data.http import Client, EndpointBlocked  # noqa: E402
 from pacersml.data.per100 import season_per100  # noqa: E402
 from pacersml.data.pipeline import (BOX_FETCHERS, PACERS, PBP_FETCHERS, UNAVAILABLE, game_list,  # noqa: E402
@@ -239,15 +239,24 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
     base_path = out_dir(season) / "game_outcomes.parquet"
     base = pd.read_parquet(base_path) if base_path.exists() else pd.DataFrame(columns=outcomes.columns)
     regressed = find_regressions(base, outcomes)
-    if regressed and not args.accept_regressions:
+    fixed = find_regressions(outcomes, base)  # the other direction: quarantined last run, passing or kept now
+    if not base.empty:
+        print(f"  vs baseline: {len(fixed)} game(s) fixed {fixed[:20]} · {len(regressed)} regressed {regressed[:20]}")
+    if args.no_write:
+        print("  --no-write: baseline unchanged, regressions reported only")
+    elif regressed and not args.accept_regressions:
         print(f"  !! REGRESSION: {len(regressed)} game(s) passed last run and are quarantined now: {regressed[:20]}")
         print("     run stopped; nothing written for this season, baseline unchanged (D15). Fix the cause, or rerun "
               "with --accept-regressions if the change is intended.")
         status["seasons"][season] = {"games": int(len(games)), "regressed": regressed, "exit_code": EXIT_REGRESSION}
         return EXIT_REGRESSION
-    merged = pd.concat([base[~base.game_id.isin(outcomes.game_id)], outcomes], ignore_index=True)
-    out_dir(season).mkdir(parents=True, exist_ok=True)
-    merged.to_parquet(base_path, index=False)
+    if not args.no_write:
+        merged = pd.concat([base[~base.game_id.isin(outcomes.game_id)], outcomes], ignore_index=True)
+        out_dir(season).mkdir(parents=True, exist_ok=True)
+        merged.to_parquet(base_path, index=False)
+    if pipeline.REORDER_SUBS:
+        print(f"  same-second reorder (trial): {int(outcomes.subs_reordered.gt(0).sum())} games had subs moved, "
+              f"{int(outcomes.subs_reordered.sum())} subs in all")
 
     # D3 amended (D15): the hybrid alarm fires on any game where the shadow rebuild passes the lineup checks and
     # the hybrid fails them. Other quarantines (NBA's sources disagreeing, rebuild losses) are counted, no alarm.
@@ -404,9 +413,13 @@ def main() -> int:
     ap.add_argument("--no-rotation-calls", action="store_true",
                     help="never call gamerotation; use cached rotation files only (that is rotation_pass.py's job). "
                          "A training season with rotation tries left is still not frozen")
+    ap.add_argument("--reorder-subs", action="store_true",
+                    help="trial: move a sub after live-play events logged after it in the same second "
+                         "(D8 amendment under test). Use with --no-write")
     ap.add_argument("--max-fetch", type=int, help="download only (no processing); stop after N games that needed "
                                                   "the network, exit 5 if more remain (D12)")
     args = ap.parse_args()
+    pipeline.REORDER_SUBS = args.reorder_subs
 
     c = Client()
     status = {"started_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), "seasons": {}, "notes": []}
