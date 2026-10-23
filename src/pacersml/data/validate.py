@@ -18,7 +18,8 @@ Per-game checks (hard = a failure quarantines the game, D3/D11):
 A passing check with `noted` set puts the game in the "kept with notes" list instead of quarantine.
     poss_pbpstats team possessions per game vs pbpstats.com                                   reported only
 Season checks:
-    team-season possessions vs NBA team POSS: gap > 2% fails the season (D1)
+    team-season possessions vs NBA team POSS: gap > 2% fails the season (D1), for team-seasons with at least
+    1,000 NBA possessions; smaller ones are reported only (D19)
     player-season possessions vs NBA player POSS: flagged when > 2% AND > 5 possessions, report-only (D7);
     share of players over vs under NBA reported, outside 40/60 marked "investigate" (D7)
 """
@@ -34,6 +35,7 @@ from pacersml.data.stints import player_stints
 
 COUNT_STATS = ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "tov", "reb", "pf"]
 POSS_TOL = 0.02            # D1 / D5
+TEAM_POSS_MIN = 1000       # D19: the D1 team-season check is enforced only from this many NBA possessions
 PLAYER_POSS_FLOOR = 5      # D7: player flag also needs |gap| > 5 possessions
 DIRECTION_BAND = (0.40, 0.60)  # D7: share of player gaps that are "over"
 LINEUP_CHECKS = ("minutes", "floor_five", "game_seconds", "plus_minus")
@@ -174,7 +176,8 @@ def team_poss_check(stints_all: pd.DataFrame, games: pd.DataFrame, nba_team_adv:
     nba = nba_team_adv.set_index("TEAM_ID").POSS.rename("poss_nba")
     t = t.merge(nba, left_on="team_id", right_index=True, how="left")
     t["gap_pct"] = (t.poss_ours - t.poss_nba) / t.poss_nba
-    t["over_tol"] = t.gap_pct.abs() > POSS_TOL
+    t["enforced"] = t.poss_nba >= TEAM_POSS_MIN  # D19: smaller team-seasons (play-in, early season) reported only
+    t["over_tol"] = (t.gap_pct.abs() > POSS_TOL) & t.enforced
     return t, bool(t.over_tol.any())
 
 

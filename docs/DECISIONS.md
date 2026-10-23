@@ -548,3 +548,26 @@ D1's 2% tolerance is unchanged. If a team is still over 2% after the fix, the ga
 
 Also fixed: 7 games of 2026-27 had empty box scores cached (NBA answered before the box was filled in), which
 crashed the run. An empty box is now removed from the cache and fetched again on the next run.
+
+---
+
+## D19 — Small samples in the D1 team-season possession check (2026-10-23, Phase 1)
+
+After D18, step A wrote 2024-25. 2025-26 still exited 4 on one team: Phoenix in the play-in, 2 games, ours 183,
+pbpstats 184, NBA 188 (−2.7%). In 2024-25 every regular-season team is 0.55–0.92% under NBA (mean −0.71%),
+playoffs −0.20% to −1.34%, play-in 0% to −1.52%. On a 2-game sample that offset plus a possession of noise
+crosses 2%.
+
+Options given: (1) enforce only for team-seasons with ≥ 1,000 NBA possessions; (2) skip play-in only;
+(3) fail only when the gap is > 2% and > 10 possessions.
+
+**Decision (Jonathan): option 1.** The 2% alarm applies to team-seasons with at least **1,000 NBA possessions**
+(about 10 games). Smaller ones are reported (`enforced = False` in `team_poss_check.parquet`), not enforced. This
+covers play-in, short playoff runs and the first weeks of 2026-27.
+
+Also (bug fix): a season with games that couldn't be loaded counts as partial for the season-level checks, because
+NBA's totals include games we don't have. 2026-27 had 7 such games (empty box scores, D18).
+
+Player-season possessions, 2024-25 regular season, for the D7 "investigate" flag (report-only): 569 players, 2 over
+/ 567 under. Gap (off+def)/2 vs NBA POSS: median −2.21% (IQR −2.98% to −1.71%), median −0.85 possessions per
+game. The team gap over the same games is −0.71%. Not investigated yet.

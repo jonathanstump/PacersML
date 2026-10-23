@@ -170,3 +170,14 @@ def test_unpaired_minutes_gap_up_to_3s_kept_with_note_paired_gap_fails():
     b.loc[b.person_id == 14, "seconds"] = 62                         # the sub 2 s later: a teammate pair
     b.loc[b.person_id == 16, "seconds"] = 658
     assert "minutes" in process_game(game(), GameData(b, game_rows(), rotation())).quarantine["failed_checks"]
+
+
+def test_team_possession_check_enforced_only_from_1000_nba_possessions():
+    from pacersml.data.validate import team_poss_check
+    stints = pd.DataFrame({"game_id": ["g1", "g2"], "home_poss": [183, 950], "away_poss": [100, 100]})
+    games = pd.DataFrame({"game_id": ["g1", "g2"], "home_team_id": [1, 3], "away_team_id": [2, 4]})
+    nba = pd.DataFrame({"TEAM_ID": [1, 2, 3, 4], "POSS": [188, 100, 1000, 100]})
+    t, failed = team_poss_check(stints, games, nba)
+    t = t.set_index("team_id")
+    assert not t.loc[1, "over_tol"] and not t.loc[1, "enforced"]   # -2.7% on 188: reported only (D19)
+    assert t.loc[3, "over_tol"] and failed                          # -5% on 1,000: fails (D1)
