@@ -4,25 +4,29 @@ The download chunks never call gamerotation; this pass makes every call: one req
 ROTATION_TRIES tries per game in total (the ledger is shared with refresh.py), in rounds, so a game that failed
 gets its second try at least one round later.
 
-Pace and throttle guard (D15): gamerotation throttles us on its own while other endpoints keep answering
-(2026-10-22: 13 of 14 calls timed out or 500'd, including games that had downloaded fine, while box scores
-answered in < 1 s). So:
+Pace and throttle guard (D15, revised D20): gamerotation throttles us on its own while other endpoints keep
+answering (2026-10-22: 13 of 14 calls timed out or 500'd, including games that had downloaded fine, while box
+scores answered in < 1 s). So:
   - one gamerotation call every INTERVAL_S seconds (default 30);
-  - when a call fails, ask gamerotation for a CANARY game we already have. Canary answers -> the failure is the
-    game's own and counts as one of its tries. Canary fails too -> we are being throttled: the try is not
-    counted, and the pass backs off BACKOFF_S (30 min, 1 h, 2 h, 4 h), then stops.
+  - when a call fails, ask gamerotation for a CANARY: a random game we already have, a different one each time.
+    Canary answers -> the failure is the game's own and counts as one of its tries. Canary fails too -> we are
+    being throttled: the try is not counted, and the pass backs off BACKOFF_S (30 min, 1 h, 2 h, 4 h), then stops;
+  - STREAK_MAX counted failures in a row also mean throttling, whatever the canary says: those failures are
+    uncounted and the pass backs off and resumes from the first of them. (2026-10-24: one fixed canary kept
+    answering for hours while ~1 game in 150 did, probably a cached response, and the pass used up tries.)
 
 Resumable: the ledger and every rotation file are written per game. Run it when no other pull is running, then
 run refresh.py (normal mode) to process.
 
     python -u scripts/rotation_pass.py                       # all seasons with downloaded games
     python -u scripts/rotation_pass.py --seasons 2024-25 --interval 45
-    python -u scripts/rotation_pass.py --reset-throttled     # once: clear tries recorded before D15 (see below)
+    python -u scripts/rotation_pass.py --reset-throttled     # clear tries for games still without rotation
 """
 from __future__ import annotations
 
 import argparse
 import json
+import random
 import shutil
 import sys
 import time
@@ -39,6 +43,7 @@ from refresh import ROTATION_TRIES, SEASONS, rotation_ledger  # noqa: E402
 
 INTERVAL_S = 30
 BACKOFF_S = (1800, 3600, 7200, 14400)
+STREAK_MAX = 8  # counted failures in a row that mean throttling, whatever the canary says (D20)
 UNAVAILABLE = (EndpointError, EndpointBlocked, FileNotFoundError)
 
 
@@ -54,34 +59,36 @@ def todo(season: str, ledger: dict) -> list[str]:
 
 
 def canary(season: str) -> str | None:
+    """A random game we already have rotation for, a different one each call (D20)."""
     rot = sorted((cache.RAW / season / "stats_rotation").glob("*.json.gz"))
-    return rot[0].name.split(".")[0] if rot else None
+    return random.choice(rot).name.split(".")[0] if rot else None
 
 
 def reset_throttled(seasons: list[str]) -> None:
-    """Tries recorded before D15 were made while gamerotation was throttling us, so they say nothing about the
-    games. Back the ledger up and clear it for games still without a rotation file."""
+    """Tries recorded while gamerotation was throttling us say nothing about the games. Back the ledger up and
+    clear it for games still without a rotation file."""
+    stamp_ = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M")
     for season in seasons:
         path, ledger = rotation_ledger(season)
         if not ledger:
             continue
-        shutil.copy(path, path.with_name("rotation_attempts_pre_d15.json"))
+        shutil.copy(path, path.with_name(f"rotation_attempts_backup_{stamp_}.json"))
         kept = {g: n for g, n in ledger.items() if cache.find_raw(season, ["stats_rotation"], g) is not None}
         path.write_text(json.dumps(kept))
-        print(f"{season}: cleared {len(ledger) - len(kept)} recorded tries (backup rotation_attempts_pre_d15.json)")
+        print(f"{season}: cleared {len(ledger) - len(kept)} recorded tries (backup rotation_attempts_backup_{stamp_}.json)")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seasons", nargs="+", default=SEASONS)
     ap.add_argument("--interval", type=float, default=INTERVAL_S, help="seconds between gamerotation calls")
-    ap.add_argument("--reset-throttled", action="store_true", help="clear pre-D15 tries, then exit")
+    ap.add_argument("--reset-throttled", action="store_true", help="clear tries for games without rotation, then exit")
     args = ap.parse_args()
     if args.reset_throttled:
         reset_throttled(args.seasons)
         return 0
 
-    # one request per try, no endpoint cooldown: the canary below decides whether a failure counts
+    # one request per try, no endpoint cooldown: the canary and the streak rule decide whether a failure counts
     c = Client(min_interval=args.interval, retries=1, cooldown_after=10**9)
 
     def call(gid: str):
@@ -89,14 +96,15 @@ def main() -> int:
 
     for season in args.seasons:
         path, ledger = rotation_ledger(season)
-        ref = canary(season) or canary("2024-25")
+        canary_season = season if canary(season) else "2024-25"
         rnd = 0
         while games := todo(season, ledger):
             rnd += 1
             n_ok = n_fail = n_throttled = 0
-            print(f"\n=== {season} round {rnd}: {len(games)} games without rotation · canary {ref} @ {stamp()}",
+            print(f"\n=== {season} round {rnd}: {len(games)} games without rotation · random canaries @ {stamp()}",
                   flush=True)
             backoffs = iter(BACKOFF_S)
+            streak = []  # games whose failure counted since the last success
             i = 0
             while i < len(games):
                 gid = games[i]
@@ -104,26 +112,40 @@ def main() -> int:
                     payload = call(gid)
                 except UNAVAILABLE:
                     c.blocked_hosts.clear()
+                    ref = canary(canary_season)
                     try:
                         call(ref)
-                    except UNAVAILABLE:  # the canary fails too: throttled, the try doesn't count
+                        throttled = len(streak) + 1 >= STREAK_MAX
+                    except UNAVAILABLE:
                         c.blocked_hosts.clear()
+                        throttled = True
+                    if not throttled:  # canary answered: this game's own failure
+                        ledger[gid] = ledger.get(gid, 0) + 1
+                        n_fail += 1
+                        streak.append(gid)
+                    else:  # not counted, nor are the failures in the streak before it
+                        for g in streak:
+                            ledger[g] -= 1
+                        n_fail -= len(streak)
                         n_throttled += 1
+                        i -= len(streak)
+                        path.write_text(json.dumps(ledger))
                         wait = next(backoffs, None)
+                        print(f"  {gid}: throttled (canary {ref}, {len(streak) + 1} failures in a row): not counted, "
+                              f"{len(streak)} earlier failures uncounted", flush=True)
+                        streak = []
                         if wait is None:
                             print(f"  gamerotation still throttling after backoffs of {BACKOFF_S} s; "
                                   f"stopping @ {stamp()} (resume later with the same command)")
                             return 3
-                        print(f"  {gid}: failed and canary {ref} failed too: throttled, not counted; "
-                              f"backing off {wait}s @ {stamp()}", flush=True)
+                        print(f"  backing off {wait}s, then resuming at {games[i]} @ {stamp()}", flush=True)
                         time.sleep(wait)
-                        continue  # retry the same game
-                    ledger[gid] = ledger.get(gid, 0) + 1  # canary answered: this game's own failure
-                    n_fail += 1
+                        continue
                 else:
                     cache.write_raw(payload, season, "stats_rotation", gid)
                     n_ok += 1
                     backoffs = iter(BACKOFF_S)
+                    streak = []
                 path.write_text(json.dumps(ledger))
                 i += 1
                 if i % 25 == 0:

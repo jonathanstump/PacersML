@@ -571,3 +571,19 @@ NBA's totals include games we don't have. 2026-27 had 7 such games (empty box sc
 Player-season possessions, 2024-25 regular season, for the D7 "investigate" flag (report-only): 569 players, 2 over
 / 567 under. Gap (off+def)/2 vs NBA POSS: median −2.21% (IQR −2.98% to −1.71%), median −0.85 possessions per
 game. The team gap over the same games is −0.71%. Not investigated yet.
+
+---
+
+## D20 — Rotation pass: the fixed canary stopped detecting throttling (2026-10-24, Phase 1, bug fix)
+
+Second rotation-pass run (`data/rotation_pass_d15_part2.log`):
+- 2024-25 round 1: 844 games, 347 ok, 497 failed. Round 2: 323 games, 48 ok, 275 failed. 871 of 1,320 games have
+  rotation now; the other 449 used both tries.
+- 2025-26 round 1, stopped at 600 of 1,283: 199 ok. From 02:33 to 05:03 UTC, 1 success in 150 calls.
+- "throttled" was 0 for the whole run: the fixed canary (the first cached game) answered every time it was
+  asked, probably from a cached response, so every failure counted against its game.
+
+Fix: each canary is a random cached game, and 8 counted failures in a row also count as throttling: those tries
+are uncounted, the pass backs off and resumes from the first of them. The ledger was reset again for games without
+rotation (backup `rotation_attempts_backup_*.json`), on D15's reasoning: tries made while throttled say nothing
+about the game.

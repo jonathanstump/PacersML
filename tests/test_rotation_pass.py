@@ -69,3 +69,20 @@ def test_stops_after_all_backoffs(tmp_path, monkeypatch):
     setup(tmp_path, monkeypatch, lambda gid, n: False)
     assert rp.main() == 3
     assert all(v == 0 for v in ledger().values())
+
+
+def test_streak_of_failures_is_throttling_even_when_the_canary_answers(tmp_path, monkeypatch):
+    # every game fails on its first call, canary always answers: the streak rule uncounts and retries them
+    seen = {}
+
+    def answers(gid, n):
+        if gid == CANARY:
+            return True
+        seen[gid] = seen.get(gid, 0) + 1
+        return seen[gid] > 1
+    monkeypatch.setattr(rp, "STREAK_MAX", 3)
+    setup(tmp_path, monkeypatch, answers)
+    assert rp.main() == 0
+    # GIDS[0], [1] counted, [2] completes the streak -> all three uncounted and retried (and they then answer)
+    assert ledger().get(GIDS[0], 0) == 0 and ledger().get(GIDS[2], 0) == 0
+    assert len(list((tmp_path / SEASON / "stats_rotation").glob("*.json.gz"))) == len(GIDS) + 1
