@@ -120,13 +120,21 @@ def load_game(c: Client, season: str, gid: str, source: str, fetch_rotation: boo
     # Payloads fetched while a game was still on are incomplete and would stay cached forever (2026-27: 6 PBP
     # files cached at 02:11 UTC mid-game, quarantined on team points). Drop them; they're fetched again next run.
     end = game_end_utc(pbp_hit)
-    if end is None:
+    if end is None:  # one fresh fetch now; still no game end -> missing this run
         cache.raw_path(season, pbp_hit[0], gid).unlink(missing_ok=True)
-        raise EndpointError(f"{gid}: play-by-play has no game end (cached copy removed, fetched again next run)")
+        pbp_hit = _payload(c, season, gid, source, PBP_FETCHERS)
+        end = game_end_utc(pbp_hit) if pbp_hit else None
+        if end is None:
+            if pbp_hit:
+                cache.raw_path(season, pbp_hit[0], gid).unlink(missing_ok=True)
+            raise EndpointError(f"{gid}: play-by-play has no game end (not cached, fetched again next run)")
     box_file = cache.raw_path(season, box_hit[0], gid)
     if end is not pd.NaT and box_file.exists() and pd.Timestamp(box_file.stat().st_mtime, unit="s", tz="UTC") < end:
         box_file.unlink()
-        raise EndpointError(f"{gid}: box score cached before the game ended (removed, fetched again next run)")
+        box_hit = _payload(c, season, gid, source, BOX_FETCHERS)
+        if box_hit is None:
+            raise EndpointError(f"{gid}: box score cached before the game ended (removed, fetched again next run)")
+        box = normalize.box(box_hit[1], gid)
     if pbp_hit[0] == "stats_pbp":
         ev = normalize.events_v3(pbp_hit[1], gid, box)
     else:

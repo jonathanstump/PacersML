@@ -1,8 +1,8 @@
 check,sum,count,pass_rate
-floor_five,1,1,1.0
-game_seconds,1,1,1.0
-minutes,1,1,1.0
-pbp_counts,1,1,1.0
-plus_minus,1,1,1.0
-poss_pbpstats,1,1,1.0
-team_points,1,1,1.0
+floor_five,1321,1321,1.0
+game_seconds,1321,1321,1.0
+minutes,1319,1321,0.9984859954579863
+pbp_counts,1318,1321,0.9977289931869796
+plus_minus,1316,1321,0.9962149886449659
+poss_pbpstats,1321,1321,1.0
+team_points,1320,1321,0.9992429977289932
