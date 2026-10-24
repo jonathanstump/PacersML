@@ -181,3 +181,16 @@ def test_team_possession_check_enforced_only_from_1000_nba_possessions():
     t = t.set_index("team_id")
     assert not t.loc[1, "over_tol"] and not t.loc[1, "enforced"]   # -2.7% on 188: reported only (D19)
     assert t.loc[3, "over_tol"] and failed                          # -5% on 1,000: fails (D1)
+
+
+def test_game_end_marks_complete_play_by_play():
+    from pacersml.data.pipeline import game_end_utc
+    live = {"game": {"actions": [{"actionType": "period", "subType": "end", "period": 4},
+                                 {"actionType": "game", "subType": "end", "timeActual": "2026-10-22T04:30:00Z"}]}}
+    assert game_end_utc(("cdn_pbp", live)) == pd.Timestamp("2026-10-22T04:30:00Z")
+    live["game"]["actions"].pop()                                 # fetched mid-game: no game-end action yet
+    assert game_end_utc(("cdn_pbp", live)) is None
+    v3 = {"game": {"actions": [{"actionType": "period", "subType": "end", "period": 3}]}}
+    assert game_end_utc(("stats_pbp", v3)) is None
+    v3["game"]["actions"].append({"actionType": "period", "subType": "end", "period": 4})
+    assert game_end_utc(("stats_pbp", v3)) is pd.NaT

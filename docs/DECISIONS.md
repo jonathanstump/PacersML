@@ -602,3 +602,22 @@ Options given: (1) process now, retry the pass slower later, no freeze until it 
 **Decision (Jonathan): option 1.** Run the processing refresh now (games without rotation use the rebuild). Retry
 the pass in a day or two with `--interval 60`. 2024-25 and 2025-26 stay unfrozen until the pass finishes or
 Jonathan decides to stop it.
+
+---
+
+## D22 — Step C results; games cached mid-game are fetched again (2026-10-24, Phase 1, bug fix)
+
+Step C (`data/refresh_d21.log`) exited 0 and wrote all three seasons. No regressions against the baseline, no
+hybrid-bug games.
+
+| season | games | hybrid | rebuild | quarantined | kept with notes |
+|---|---|---|---|---|---|
+| 2024-25 | 1,320 | 880 (12 q) | 440 (8 q) | 20 (1.52%) | 36 |
+| 2025-26 | 1,321 | 236 (2 q) | 1,085 (6 q) | 8 (0.61%) | 64 |
+| 2026-27 | 28 | 2 (0 q) | 26 (8 q) | 8 | 2 |
+
+2026-27: 6 of the 8 quarantines were play-by-play files cached at 02:11 UTC on 10-22 while the games were still
+being played (last action in Q3 or Q4, no game-end action), so they failed team points. Of the 2,669 cached
+liveData PBP files, these 6 are the only ones with no game-end action. Fix: a PBP payload without a game end
+(liveData's game-end action; for playbyplayv3, a period-4-or-later end) is removed from the cache and fetched
+again next run; a box score cached before the game-end time is too. Pacers game 0022600090 is one of the 6.
