@@ -587,3 +587,18 @@ Fix: each canary is a random cached game, and 8 counted failures in a row also c
 are uncounted, the pass backs off and resumes from the first of them. The ledger was reset again for games without
 rotation (backup `rotation_attempts_backup_*.json`), on D15's reasoning: tries made while throttled say nothing
 about the game.
+
+---
+
+## D21 — Rotation pass throttled out; process now, retry slower later (2026-10-24, Phase 1)
+
+Third rotation-pass run (`data/rotation_pass_part3.log`, after the D20 fix and ledger reset): 9 new games from
+05:09 to 13:54 UTC. It stopped by itself (exit 3) after every backoff (30 min, 1 h, 2 h, 4 h), with random canaries
+also failing. No game's try was counted. Coverage: 2024-25 880/1,320, 2025-26 237/1,321, 2026-27 3/7.
+
+Options given: (1) process now, retry the pass slower later, no freeze until it finishes or is stopped;
+(2) process now and freeze anyway (amends D13); (3) wait and retry before processing.
+
+**Decision (Jonathan): option 1.** Run the processing refresh now (games without rotation use the rebuild). Retry
+the pass in a day or two with `--interval 60`. 2024-25 and 2025-26 stay unfrozen until the pass finishes or
+Jonathan decides to stop it.
