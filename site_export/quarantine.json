@@ -1,9 +1,9 @@
 {
-  "generated_utc": "2026-10-24T16:50:58+00:00",
+  "generated_utc": "2026-10-25T18:56:19+00:00",
   "rotation_unavailable_games": {
     "2024-25": 440,
     "2025-26": 1084,
-    "2026-27": 25
+    "2026-27": 33
   },
   "sub_timing_disagreements": {
     "2024-25": {
@@ -472,76 +472,12 @@
       "starters": "{'P1:1610612766': {'starters': [1628970, 1630163, 1631217, 1641706, 1642851], 'method': 'events'}, 'P1:1610612765': {'starters': [202699, 1629130, 1630595, 1631105, 1641709], 'method': 'events'}, 'P2:1610612766': {'starters': [1629684, 1630544, 1641750, 1642851, 1642883], 'method': 'events'}, 'P2:1610612765': {'starters': [202699, 1627747, 1629750, 1630191, 1642450], 'method': 'events'}, 'P3:1610612766': {'starters': [1628970, 1629684, 1630163, 1641706, 1642851], 'method': 'events'}, 'P3:1610612765': {'starters': [202699, 1629750, 1630191, 1630595, 1642450], 'method': 'events'}, 'P4:1610612766': {'starters': [1630182, 1630544, 1641706, 1641750, 1642883], 'method': 'events'}, 'P4:1610612765': {'starters': [1627747, 1628989, 1629750, 1630194, 1642450], 'method': 'events'}}"
     },
     {
-      "game_id": "0022600087",
-      "season": "2026-27",
-      "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=24;plus_minus=3;team_points=3;pbp_counts=2",
-      "stint_method": "pbp_rebuild",
-      "rebuild_attempted": true,
-      "rotation_available": false,
-      "rotation_unmatched": null,
-      "pbp_subs_off": null,
-      "pacers_game": false,
-      "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612751': {'starters': [203944, 1629008, 1630549, 1631165, 1642856], 'method': 'events'}, 'P1:1610612766': {'starters': [203471, 1629675, 1631217, 1641706, 1642883], 'method': 'events'}, 'P2:1610612751': {'starters': [203944, 1629021, 1641730, 1642849, 1643414], 'method': 'events'}, 'P2:1610612766': {'starters': [203471, 1626220, 1628960, 1631217, 1642883], 'method': 'events'}, 'P3:1610612751': {'starters': [203944, 1629008, 1630549, 1631165, 1642856], 'method': 'events'}, 'P3:1610612766': {'starters': [203471, 1628960, 1629675, 1631217, 1641706], 'method': 'events'}, 'P4:1610612751': {'starters': [203944, 1629021, 1641730, 1642849, 1643414], 'method': 'events'}, 'P4:1610612766': {'starters': [203471, 1628960, 1631217, 1641706, 1642883], 'method': 'events'}}"
-    },
-    {
-      "game_id": "0022600089",
-      "season": "2026-27",
-      "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=446;plus_minus=6;team_points=17;pbp_counts=9",
-      "stint_method": "pbp_rebuild",
-      "rebuild_attempted": true,
-      "rotation_available": false,
-      "rotation_unmatched": null,
-      "pbp_subs_off": null,
-      "pacers_game": false,
-      "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612763': {'starters': [1629660, 1641744, 1642377, 1642907, 1643409], 'method': 'events'}, 'P1:1610612762': {'starters': [1628374, 1628991, 1629637, 1641718, 1643408], 'method': 'events'}, 'P2:1610612763': {'starters': [1629660, 1641713, 1642366, 1642907, 1643409], 'method': 'events'}, 'P2:1610612762': {'starters': [1628374, 1629004, 1642268, 1642271, 1642846], 'method': 'events'}, 'P3:1610612763': {'starters': [203924, 1629660, 1641713, 1642907, 1643409], 'method': 'events'}, 'P3:1610612762': {'starters': [1628374, 1628991, 1629004, 1642846, 1643408], 'method': 'events'}, 'P4:1610612763': {'starters': [1629660, 1641713, 1642377, 1642907, 1643409], 'method': 'events'}, 'P4:1610612762': {'starters': [1628374, 1629004, 1629637, 1642268, 1642846], 'method': 'events'}}"
-    },
-    {
-      "game_id": "0022600004",
-      "season": "2026-27",
-      "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=231;plus_minus=6;team_points=8;pbp_counts=4",
-      "stint_method": "pbp_rebuild",
-      "rebuild_attempted": true,
-      "rotation_available": false,
-      "rotation_unmatched": null,
-      "pbp_subs_off": null,
-      "pacers_game": false,
-      "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612748': {'starters': [202691, 203507, 203952, 1628389, 1630558], 'method': 'events'}, 'P1:1610612750': {'starters': [203497, 1630162, 1630163, 1630183, 1630228], 'method': 'events'}, 'P2:1610612748': {'starters': [203501, 203507, 1626171, 1631107, 1641796], 'method': 'events'}, 'P2:1610612750': {'starters': [1626168, 1630163, 1630245, 1630545, 1642866], 'method': 'events'}, 'P3:1610612748': {'starters': [203507, 203952, 1628389, 1630558, 1641796], 'method': 'events'}, 'P3:1610612750': {'starters': [203497, 1630162, 1630163, 1630183, 1630245], 'method': 'events'}, 'P4:1610612748': {'starters': [203501, 203507, 1626171, 1631107, 1641796], 'method': 'events'}, 'P4:1610612750': {'starters': [203497, 1630163, 1630228, 1630245, 1630545], 'method': 'events'}}"
-    },
-    {
-      "game_id": "0022600091",
-      "season": "2026-27",
-      "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=1128;plus_minus=18;team_points=61;pbp_counts=14",
-      "stint_method": "pbp_rebuild",
-      "rebuild_attempted": true,
-      "rotation_available": false,
-      "rotation_unmatched": null,
-      "pbp_subs_off": null,
-      "pacers_game": false,
-      "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612745': {'starters': [201142, 1627832, 1630578, 1631095, 1641708], 'method': 'events'}, 'P1:1610612742': {'starters': [202681, 1629023, 1629655, 1631108, 1642843], 'method': 'events'}, 'P2:1610612745': {'starters': [201142, 203935, 1630578, 1641708, 1642263], 'method': 'events'}, 'P2:1610612742': {'starters': [202681, 1629023, 1630230, 1631108, 1642843], 'method': 'events'}, 'P3:1610612745': {'starters': [201142, 203935, 1627832, 1631095, 1641708], 'method': 'events'}, 'P3:1610612742': {'starters': [202681, 1629023, 1630230, 1631108, 1642843], 'method': 'events'}}"
-    },
-    {
       "game_id": "0022600090",
       "season": "2026-27",
       "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=428;plus_minus=6;team_points=23;pbp_counts=10",
+      "failed_checks": "plus_minus",
+      "group": "B",
+      "residuals": "plus_minus=1",
       "stint_method": "pbp_rebuild",
       "rebuild_attempted": true,
       "rotation_available": false,
@@ -552,12 +488,12 @@
       "starters": "{'P1:1610612740': {'starters': [1627749, 1629627, 1630530, 1642274, 1642847], 'method': 'events'}, 'P1:1610612754': {'starters': [1626162, 1627783, 1627826, 1629614, 1630169], 'method': 'events'}, 'P2:1610612740': {'starters': [1629627, 1629673, 1630529, 1631097, 1642852], 'method': 'events'}, 'P2:1610612754': {'starters': [1626162, 1627783, 1629614, 1630167, 1631245], 'method': 'events'}, 'P3:1610612740': {'starters': [1627749, 1629627, 1630180, 1630530, 1642274], 'method': 'events'}, 'P3:1610612754': {'starters': [1627783, 1627826, 1629614, 1630169, 1641716], 'method': 'events'}, 'P4:1610612740': {'starters': [1629673, 1630180, 1630529, 1631097, 1642852], 'method': 'events'}, 'P4:1610612754': {'starters': [1627783, 1629614, 1630167, 1630169, 1641716], 'method': 'events'}}"
     },
     {
-      "game_id": "0022600088",
+      "game_id": "0022600101",
       "season": "2026-27",
       "season_type": "regular",
-      "failed_checks": "minutes,pbp_counts,plus_minus,team_points",
-      "group": "D",
-      "residuals": "minutes=258;plus_minus=1;team_points=7;pbp_counts=6",
+      "failed_checks": "plus_minus",
+      "group": "B",
+      "residuals": "plus_minus=2",
       "stint_method": "pbp_rebuild",
       "rebuild_attempted": true,
       "rotation_available": false,
@@ -565,7 +501,7 @@
       "pbp_subs_off": null,
       "pacers_game": false,
       "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612761': {'starters': [202695, 1627751, 1629628, 1630193, 1630567], 'method': 'events'}, 'P1:1610612741': {'starters': [1626181, 1630188, 1630581, 1641824, 1643410], 'method': 'events'}, 'P2:1610612761': {'starters': [1629628, 1630193, 1642266, 1642419, 1642867], 'method': 'events'}, 'P2:1610612741': {'starters': [1630171, 1630581, 1631159, 1641824, 1643410], 'method': 'events'}, 'P3:1610612761': {'starters': [202695, 1627751, 1629628, 1630193, 1630567], 'method': 'events'}, 'P3:1610612741': {'starters': [1626181, 1630171, 1630581, 1631159, 1643410], 'method': 'events'}, 'P4:1610612761': {'starters': [202695, 1627751, 1630193, 1642266, 1643512], 'method': 'events'}, 'P4:1610612741': {'starters': [1630581, 1631159, 1642855, 1643591, 1643637], 'method': 'events'}}"
+      "starters": "{'P1:1610612744': {'starters': [201939, 203110, 1641764, 1642865, 1643633], 'method': 'events'}, 'P1:1610612763': {'starters': [1629660, 1641713, 1641744, 1642377, 1643409], 'method': 'events'}, 'P2:1610612744': {'starters': [1629001, 1630314, 1630611, 1641764, 1642865], 'method': 'events'}, 'P2:1610612763': {'starters': [203924, 1629660, 1641713, 1642366, 1643409], 'method': 'events'}, 'P3:1610612744': {'starters': [201939, 203110, 1629001, 1641764, 1642865], 'method': 'events'}, 'P3:1610612763': {'starters': [203924, 1629660, 1630590, 1642366, 1643409], 'method': 'events'}, 'P4:1610612744': {'starters': [201143, 1630314, 1630611, 1641764, 1642865], 'method': 'events'}, 'P4:1610612763': {'starters': [203924, 1629660, 1641713, 1641744, 1643409], 'method': 'events'}}"
     },
     {
       "game_id": "0022600009",
@@ -584,12 +520,12 @@
       "starters": "{'P1:1610612759': {'starters': [1628368, 1630170, 1641705, 1642264, 1642844], 'method': 'events'}, 'P1:1610612745': {'starters': [201142, 1627832, 1630578, 1631095, 1641708], 'method': 'events'}, 'P2:1610612759': {'starters': [1628368, 1629640, 1630577, 1641705, 1642264], 'method': 'events'}, 'P2:1610612745': {'starters': [203935, 1630578, 1631095, 1631106, 1641708], 'method': 'events'}, 'P3:1610612759': {'starters': [1628368, 1630577, 1641705, 1642264, 1642844], 'method': 'events'}, 'P3:1610612745': {'starters': [201142, 203935, 1627832, 1630578, 1641708], 'method': 'events'}, 'P4:1610612759': {'starters': [1628368, 1630170, 1630577, 1641705, 1642844], 'method': 'events'}, 'P4:1610612745': {'starters': [201142, 203935, 1631095, 1631106, 1641708], 'method': 'events'}}"
     },
     {
-      "game_id": "0022600101",
+      "game_id": "0022600111",
       "season": "2026-27",
       "season_type": "regular",
-      "failed_checks": "plus_minus",
-      "group": "B",
-      "residuals": "plus_minus=2",
+      "failed_checks": "minutes",
+      "group": "C",
+      "residuals": "minutes=300",
       "stint_method": "pbp_rebuild",
       "rebuild_attempted": true,
       "rotation_available": false,
@@ -597,7 +533,7 @@
       "pbp_subs_off": null,
       "pacers_game": false,
       "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612744': {'starters': [201939, 203110, 1641764, 1642865, 1643633], 'method': 'events'}, 'P1:1610612763': {'starters': [1629660, 1641713, 1641744, 1642377, 1643409], 'method': 'events'}, 'P2:1610612744': {'starters': [1629001, 1630314, 1630611, 1641764, 1642865], 'method': 'events'}, 'P2:1610612763': {'starters': [203924, 1629660, 1641713, 1642366, 1643409], 'method': 'events'}, 'P3:1610612744': {'starters': [201939, 203110, 1629001, 1641764, 1642865], 'method': 'events'}, 'P3:1610612763': {'starters': [203924, 1629660, 1630590, 1642366, 1643409], 'method': 'events'}, 'P4:1610612744': {'starters': [201143, 1630314, 1630611, 1641764, 1642865], 'method': 'events'}, 'P4:1610612763': {'starters': [203924, 1629660, 1641713, 1641744, 1643409], 'method': 'events'}}"
+      "starters": "{'P1:1610612756': {'starters': [1626164, 1628415, 1628970, 1630224, 1642863], 'method': 'events'}, 'P1:1610612744': {'starters': [1630314, 1630611, 1642865, 1642954, 1643633], 'method': 'events'}, 'P2:1610612756': {'starters': [1628415, 1628970, 1630692, 1642346, 1642863], 'method': 'events'}, 'P2:1610612744': {'starters': [1629001, 1629646, 1630611, 1642865, 1643018], 'method': 'events'}, 'P3:1610612756': {'starters': [1626164, 1628415, 1628970, 1631221, 1642863], 'method': 'events'}, 'P3:1610612744': {'starters': [1629646, 1630314, 1630611, 1642865, 1642954], 'method': 'events'}, 'P4:1610612756': {'starters': [1626164, 1628970, 1630692, 1631221, 1642346], 'method': 'events'}, 'P4:1610612744': {'starters': [1627780, 1642502, 1642865, 1642954, 1643018], 'method': 'events'}, 'P5:1610612756': {'starters': [1626164, 1628415, 1628970, 1630224, 1630692], 'method': 'events+prev_period'}, 'P5:1610612744': {'starters': [1629001, 1630314, 1642865, 1642954, 1643633], 'method': 'events+prev_period'}}"
     }
   ],
   "kept_with_notes": [
@@ -1502,13 +1438,13 @@
       "detail": "plus_minus: sub at technical FT; 2544:+1;1629060:+1;1630559:+1;203935:+1;1628379:+1;1642876:-1;1628467:-1;1642261:-1;1642355:-1;1641733:-1"
     },
     {
-      "game_id": "0022600103",
+      "game_id": "0022600091",
       "season": "2026-27",
       "season_type": "regular",
       "stint_method": "pbp_rebuild",
       "pacers_game": false,
       "checks": "pbp_counts",
-      "detail": "pbp_counts: fg3a:1;reb:2;team 1610612758 fg3a:+1; team points match, possessions within 2% of pbpstats"
+      "detail": "pbp_counts: fga:1;fg3a:1;team 1610612742 fga:-1;team 1610612742 fg3a:-1; team points match, possessions within 2% of pbpstats"
     },
     {
       "game_id": "0022600102",
@@ -1518,6 +1454,15 @@
       "pacers_game": false,
       "checks": "pbp_counts",
       "detail": "pbp_counts: tov:2; moved between teammates"
+    },
+    {
+      "game_id": "0022600103",
+      "season": "2026-27",
+      "season_type": "regular",
+      "stint_method": "pbp_rebuild",
+      "pacers_game": false,
+      "checks": "pbp_counts",
+      "detail": "pbp_counts: fg3a:1;reb:2;team 1610612758 fg3a:+1; team points match, possessions within 2% of pbpstats"
     }
   ],
   "games_lost": {
@@ -1537,8 +1482,8 @@
       "pbp_rebuild/D": 1
     },
     "2026-27": {
-      "pbp_rebuild/B": 2,
-      "pbp_rebuild/D": 6
+      "pbp_rebuild/B": 3,
+      "pbp_rebuild/C": 1
     }
   }
 }

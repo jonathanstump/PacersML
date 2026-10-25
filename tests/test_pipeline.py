@@ -194,3 +194,12 @@ def test_game_end_marks_complete_play_by_play():
     assert game_end_utc(("stats_pbp", v3)) is None
     v3["game"]["actions"].append({"actionType": "period", "subType": "end", "period": 4})
     assert game_end_utc(("stats_pbp", v3)) is pd.NaT
+
+
+def test_game_end_action_does_not_create_a_period():
+    from pacersml.data.normalize import events_live
+    payload = {"game": {"actions": [
+        {"actionType": "period", "subType": "start", "period": 4, "clock": "PT12M00.00S"},
+        {"actionType": "period", "subType": "end", "period": 4, "clock": "PT00M00.00S"},
+        {"actionType": "game", "subType": "end", "period": 5, "clock": "PT00M00.00S"}]}}
+    assert events_live(payload, GAME).period.max() == 4

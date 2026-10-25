@@ -621,3 +621,9 @@ being played (last action in Q3 or Q4, no game-end action), so they failed team 
 liveData PBP files, these 6 are the only ones with no game-end action. Fix: a PBP payload without a game end
 (liveData's game-end action; for playbyplayv3, a period-4-or-later end) is removed from the cache and fetched
 again next run; a box score cached before the game-end time is too. Pacers game 0022600090 is one of the 6.
+
+2026-27 re-run (`data/refresh_2026-27.log`, 36 games): the 5 non-Pacers mid-game games pass now (0 regressions);
+Pacers game 0022600090 is down to a plus-minus gap of 1. A new failure, 0022600111 (minutes = 300 s, three Suns
+players +300 s), came from NBA tagging the "Game End" action with period 5 in a regulation game (box 14,401 team
+seconds, 131-122 at the end of Q4), which created a phantom overtime. Fix: liveData game-end actions are skipped
+(they carry no play). Only this game in the 2,669 cached liveData files has a game end in an unplayed period.

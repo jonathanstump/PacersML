@@ -108,8 +108,10 @@ def events_live(payload: dict, game_id: str) -> pd.DataFrame:
     """cdn liveData playbyplay. Substitutions arrive as separate 'in' / 'out' actions."""
     rows = []
     for seq, a in enumerate(payload["game"]["actions"]):
-        r = _base(game_id, seq, a)
         at, st = a.get("actionType", ""), (a.get("subType") or "").lower()
+        if at == "game":  # 'Game End' carries no play, and NBA sometimes tags it with the next period
+            continue      # (0022600111: period 5 in a regulation game, which made a phantom overtime)
+        r = _base(game_id, seq, a)
         made = a.get("shotResult") == "Made"
         if at == "period":
             r["etype"] = "period_start" if st == "start" else "period_end"

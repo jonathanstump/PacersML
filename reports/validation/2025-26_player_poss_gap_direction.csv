@@ -1,0 +1,7 @@
+measure,over,under,equal,share_over,investigate,season_type
+gap_poss_avg,7,75,9,0.08536585365853659,True,play_in
+gap_poss_off,1,70,20,0.014084507042253521,True,play_in
+gap_poss_avg,1,217,12,0.0045871559633027525,True,playoffs
+gap_poss_off,1,211,18,0.0047169811320754715,True,playoffs
+gap_poss_avg,2,580,0,0.003436426116838488,True,regular
+gap_poss_off,0,576,6,0.0,True,regular
