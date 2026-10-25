@@ -1,0 +1,144 @@
+
+=== 0022600090 (2026-27) · builder pbp_rebuild · failing: plus_minus
+  plus_minus gaps (ours - box): Trey Murphy III -1, Zion Williamson -1, Yves Missi -1, Jeremiah Fears -1, Bennedict Mathurin +1, Saddiq Bey +1, Derik Queen +1, Herbert Jones +1, Andrew Nembhard +1, Tyrese Haliburton -1
+  scoring plays in the same second as a sub involving those players: 19
+   timeline around Q1 06:56.0:
+       Q1 07:14.0  seq   47  fg           Tyrese Haliburton      T. Haliburton running Layup (7 PTS)
+       Q1 06:59.0  seq   48  turnover     Dejounte Murray        D. Murray bad pass TURNOVER (1 TO)
+       Q1 06:59.0  seq   49  other        Andrew Nembhard        A. Nembhard STEAL (1 STL)
+    >> Q1 06:56.0  seq   50  fg           Andrew Nembhard        A. Nembhard running Layup (6 PTS)
+    >> Q1 06:56.0  seq   51  other        Trey Murphy III        T. Murphy III defensive goaltending VIOLATION
+    >> Q1 06:56.0  seq   52  foul         Jeremiah Fears         J. Fears shooting personal FOUL (3 PF) (Nembhard 1 FT)
+    >> Q1 06:56.0  seq   53  other                               NOP Timeout
+    >> Q1 06:56.0  seq   54  sub          Jeremiah Fears         SUB out: J. Fears  IN Bennedict Mathurin / OUT Jeremiah Fears
+    >> Q1 06:56.0  seq   56  sub          Kelly Oubre Jr.        SUB out: K. Oubre Jr.  IN Obi Toppin / OUT Kelly Oubre Jr.
+    >> Q1 06:56.0  seq   58  sub          Pascal Siakam          SUB out: P. Siakam  IN Jarace Walker / OUT Pascal Siakam
+    >> Q1 06:56.0  seq   60  ft           Andrew Nembhard        A. Nembhard Free Throw 1 of 1 (7 PTS)
+       our home lineup at Q1 06:56.0: Dejounte Murray, Zion Williamson, Trey Murphy III, Bennedict Mathurin, Yves Missi
+       our away lineup at Q1 06:56.0: Ivica Zubac, Andrew Nembhard, Obi Toppin, Tyrese Haliburton, Jarace Walker
+   timeline around Q1 04:03.0:
+       Q1 04:19.0  seq   89  fg           Tyrese Haliburton      MISS T. Haliburton 30' pullup 3PT
+       Q1 04:19.0  seq   90  rebound      Saddiq Bey             S. Bey REBOUND (Off:0 Def:1)
+    >> Q1 04:03.0  seq   91  foul         Jarace Walker          J. Walker shooting personal FOUL (1 PF) (Mathurin 2 FT)
+    >> Q1 04:03.0  seq   92  ft           Bennedict Mathurin     B. Mathurin Free Throw 1 of 2 (3 PTS)
+    >> Q1 04:03.0  seq   93  sub          Ivica Zubac            SUB out: I. Zubac  IN Andrew Nembhard / OUT Ivica Zubac
+    >> Q1 04:03.0  seq   95  sub          Tyrese Haliburton      SUB out: T. Haliburton  IN Pascal Siakam / OUT Tyrese Haliburton
+    >> Q1 04:03.0  seq   97  ft           Bennedict Mathurin     B. Mathurin Free Throw 2 of 2 (4 PTS)
+       Q1 03:43.0  seq   98  fg           Pascal Siakam          MISS P. Siakam 13' fadeaway Shot
+       Q1 03:43.0  seq   99  rebound      Derik Queen            D. Queen REBOUND (Off:0 Def:1)
+       our home lineup at Q1 04:03.0: Jordan Poole, Saddiq Bey, Herbert Jones, Bennedict Mathurin, Derik Queen
+       our away lineup at Q1 04:03.0: Pascal Siakam, Andrew Nembhard, Obi Toppin, Jarace Walker, Ben Sheppard
+   timeline around Q1 01:36.0:
+       Q1 01:56.0  seq  117  fg           Jarace Walker          J. Walker 25' 3PT running (3 PTS) (A. Nembhard 2 AST)
+    >> Q1 01:36.0  seq  118  foul         Ben Sheppard           B. Sheppard personal FOUL (1 PF) (Poole 2 FT)
+    >> Q1 01:36.0  seq  119  ft           Jordan Poole           J. Poole Free Throw 1 of 2 (1 PTS)
+    >> Q1 01:36.0  seq  120  sub          Saddiq Bey             SUB out: S. Bey  IN Zion Williamson / OUT Saddiq Bey
+    >> Q1 01:36.0  seq  122  ft           Jordan Poole           J. Poole Free Throw 2 of 2 (2 PTS)
+       Q1 01:26.0  seq  123  turnover     Jarace Walker          J. Walker bad pass TURNOVER (1 TO)
+       Q1 01:26.0  seq  124  other        Bennedict Mathurin     B. Mathurin STEAL (1 STL)
+       Q1 01:23.0  seq  125  other        Jarace Walker          J. Walker kicked ball VIOLATION
+       Q1 01:17.0  seq  126  fg           Bennedict Mathurin     B. Mathurin reverse Layup (6 PTS) (D. Queen 1 AST)
+       our home lineup at Q1 01:36.0: Zion Williamson, Jordan Poole, Herbert Jones, Bennedict Mathurin, Derik Queen
+       our away lineup at Q1 01:36.0: Pascal Siakam, Andrew Nembhard, Obi Toppin, Jarace Walker, Ben Sheppard
+   timeline around Q2 08:12.0:
+       Q2 08:27.0  seq  196  fg           Dejounte Murray        D. Murray 9' turnaround fadeaway Jump Shot (7 PTS)
+       Q2 08:20.0  seq  197  other        Herbert Jones          H. Jones kicked ball VIOLATION
+       Q2 08:14.0  seq  198  turnover     Tyrese Haliburton      T. Haliburton bad pass TURNOVER (2 TO)
+       Q2 08:14.0  seq  199  other        Yves Missi             Y. Missi STEAL (1 STL)
+    >> Q2 08:12.0  seq  200  foul         Larry Nance Jr.        L. Nance Jr. shooting personal FOUL (2 PF) (Missi 2 FT)
+    >> Q2 08:12.0  seq  201  other                               IND Timeout
+    >> Q2 08:12.0  seq  202  sub          Jordan Poole           SUB out: J. Poole  IN Trey Murphy III / OUT Jordan Poole
+    >> Q2 08:12.0  seq  204  ft           Yves Missi             Y. Missi Free Throw 1 of 2 (5 PTS)
+    >> Q2 08:12.0  seq  205  ft           Yves Missi             Y. Missi Free Throw 2 of 2 (6 PTS)
+       Q2 07:56.0  seq  206  fg           Jarace Walker          MISS J. Walker driving Layup - blocked
+       Q2 07:56.0  seq  207  other        Yves Missi             Y. Missi BLOCK (1 BLK)
+       Q2 07:56.0  seq  208  rebound      Trey Murphy III        T. Murphy III REBOUND (Off:0 Def:1)
+       our home lineup at Q2 08:12.0: Dejounte Murray, Zion Williamson, Herbert Jones, Trey Murphy III, Yves Missi
+       our away lineup at Q2 08:12.0: Larry Nance Jr., Obi Toppin, Tyrese Haliburton, Quenton Jackson, Jarace Walker
+   timeline around Q2 06:46.0:
+       Q2 06:56.0  seq  220  fg           Tyrese Haliburton      MISS T. Haliburton 28' 3PT
+       Q2 06:56.0  seq  221  rebound      Saddiq Bey             S. Bey REBOUND (Off:0 Def:2)
+       Q2 06:49.0  seq  222  fg           Dejounte Murray        MISS D. Murray running 3PT
+       Q2 06:49.0  seq  223  rebound      Dejounte Murray        D. Murray REBOUND (Off:1 Def:1)
+    >> Q2 06:46.0  seq  224  foul         Ben Sheppard           B. Sheppard shooting personal FOUL (3 PF) (Murray 2 FT)
+    >> Q2 06:46.0  seq  225  ft           Dejounte Murray        D. Murray Free Throw 1 of 2 (8 PTS)
+    >> Q2 06:46.0  seq  226  sub          Larry Nance Jr.        SUB out: L. Nance Jr.  IN Ivica Zubac / OUT Larry Nance Jr.
+    >> Q2 06:46.0  seq  228  sub          Tyrese Haliburton      SUB out: T. Haliburton  IN Andrew Nembhard / OUT Tyrese Haliburton
+    >> Q2 06:46.0  seq  230  sub          Ben Sheppard           SUB out: B. Sheppard  IN Jarace Walker / OUT Ben Sheppard
+    >> Q2 06:46.0  seq  232  ft           Dejounte Murray        D. Murray Free Throw 2 of 2 (9 PTS)
+       Q2 06:32.0  seq  233  fg           Jarace Walker          MISS J. Walker cutting DUNK - blocked
+       Q2 06:32.0  seq  234  other        Yves Missi             Y. Missi BLOCK (2 BLK)
+       Q2 06:32.0  seq  235  rebound      Saddiq Bey             S. Bey REBOUND (Off:0 Def:3)
+       our home lineup at Q2 06:46.0: Dejounte Murray, Zion Williamson, Saddiq Bey, Trey Murphy III, Yves Missi
+       our away lineup at Q2 06:46.0: Kelly Oubre Jr., Ivica Zubac, Andrew Nembhard, Obi Toppin, Jarace Walker
+   timeline around Q2 04:31.0:
+       Q2 04:46.0  seq  255  fg           Obi Toppin             MISS O. Toppin 3PT
+       Q2 04:46.0  seq  256  rebound      Zion Williamson        Z. Williamson REBOUND (Off:0 Def:2)
+    >> Q2 04:31.0  seq  257  foul         Ivica Zubac            I. Zubac shooting personal FOUL (1 PF) (Missi 2 FT)
+    >> Q2 04:31.0  seq  258  ft           Yves Missi             Y. Missi Free Throw 1 of 2 (7 PTS)
+    >> Q2 04:31.0  seq  259  sub          Obi Toppin             SUB out: O. Toppin  IN Pascal Siakam / OUT Obi Toppin
+    >> Q2 04:31.0  seq  261  sub          Jarace Walker          SUB out: J. Walker  IN Tyrese Haliburton / OUT Jarace Walker
+    >> Q2 04:31.0  seq  263  ft           Yves Missi             MISS Y. Missi Free Throw 2 of 2
+    >> Q2 04:31.0  seq  264  rebound      Ivica Zubac            I. Zubac REBOUND (Off:0 Def:3)
+       Q2 04:11.0  seq  265  fg           Pascal Siakam          P. Siakam 15' turnaround Jump Shot (11 PTS)
+       our home lineup at Q2 04:31.0: Dejounte Murray, Zion Williamson, Saddiq Bey, Trey Murphy III, Yves Missi
+       our away lineup at Q2 04:31.0: Kelly Oubre Jr., Pascal Siakam, Ivica Zubac, Andrew Nembhard, Tyrese Haliburton
+   timeline around Q3 05:18.0:
+       Q3 05:38.0  seq  364  fg           Bennedict Mathurin     MISS B. Mathurin 8' floating Shot
+       Q3 05:38.0  seq  365  rebound      Jarace Walker          J. Walker REBOUND (Off:0 Def:4)
+       Q3 05:32.0  seq  366  fg           Ben Sheppard           MISS B. Sheppard 24' running 3PT
+       Q3 05:32.0  seq  367  rebound                             TEAM offensive REBOUND
+       Q3 05:28.0  seq  368  fg           Obi Toppin             O. Toppin cutting DUNK (15 PTS) (T. Haliburton 10 AST)
+    >> Q3 05:18.0  seq  369  foul         Obi Toppin             O. Toppin shooting personal FOUL (1 PF) (Bey 2 FT)
+    >> Q3 05:18.0  seq  370  ft           Saddiq Bey             S. Bey Free Throw 1 of 2 (9 PTS)
+    >> Q3 05:18.0  seq  371  sub          Yves Missi             SUB out: Y. Missi  IN Derik Queen / OUT Yves Missi
+    >> Q3 05:18.0  seq  373  ft           Saddiq Bey             S. Bey Free Throw 2 of 2 (10 PTS)
+       Q3 05:03.0  seq  374  fg           Ivica Zubac            MISS I. Zubac turnaround Hook
+       Q3 05:03.0  seq  375  rebound                             TEAM offensive REBOUND
+       our home lineup at Q3 05:18.0: Saddiq Bey, Trey Murphy III, Bennedict Mathurin, Jeremiah Fears, Derik Queen
+       our away lineup at Q3 05:18.0: Ivica Zubac, Obi Toppin, Tyrese Haliburton, Jarace Walker, Ben Sheppard
+   timeline around Q3 00:03.1:
+       Q3 00:05.3  seq  437  fg           Bennedict Mathurin     MISS B. Mathurin 25' pullup 3PT
+       Q3 00:05.3  seq  438  rebound      Derik Queen            D. Queen REBOUND (Off:1 Def:7)
+    >> Q3 00:03.1  seq  439  foul         Andrew Nembhard        A. Nembhard shooting personal FOUL (3 PF) (Queen 2 FT)
+    >> Q3 00:03.1  seq  440  ft           Derik Queen            D. Queen Free Throw 1 of 2 (7 PTS)
+    >> Q3 00:03.1  seq  441  sub          Quenton Jackson        SUB out: Q. Jackson  IN Tyrese Haliburton / OUT Quenton Jackson
+    >> Q3 00:03.1  seq  443  ft           Derik Queen            D. Queen Free Throw 2 of 2 (8 PTS)
+       Q4 12:00.0  seq  444  period_end                          Period End
+       Q4 12:00.0  seq  445  sub          Jarace Walker          SUB out: J. Walker  IN Quenton Jackson / OUT Jarace Walker
+       Q4 12:00.0  seq  447  sub          Tyrese Haliburton      SUB out: T. Haliburton  IN Kelly Oubre Jr. / OUT Tyrese Haliburton
+       Q4 12:00.0  seq  449  period_start                        Period Start
+       Q4 11:49.0  seq  450  foul         Bennedict Mathurin     B. Mathurin shooting personal FOUL (3 PF) (Siakam 2 FT)
+       Q4 11:49.0  seq  451  ft           Pascal Siakam          MISS P. Siakam Free Throw 1 of 2
+       Q4 11:49.0  seq  452  rebound                             TEAM offensive REBOUND
+       Q4 11:49.0  seq  453  ft           Pascal Siakam          MISS P. Siakam Free Throw 2 of 2
+       Q4 11:49.0  seq  454  rebound      Derik Queen            D. Queen REBOUND (Off:1 Def:8)
+       our home lineup at Q3 00:03.1: Jordan Poole, Saddiq Bey, Herbert Jones, Bennedict Mathurin, Derik Queen
+       our away lineup at Q3 00:03.1: Pascal Siakam, Andrew Nembhard, Obi Toppin, Tyrese Haliburton, Jarace Walker
+   timeline around Q4 07:08.0:
+       Q4 07:21.0  seq  502  fg           Derik Queen            MISS D. Queen 7' turnaround Shot
+       Q4 07:21.0  seq  503  rebound      Quenton Jackson        Q. Jackson REBOUND (Off:0 Def:2)
+    >> Q4 07:08.0  seq  504  fg           Ivica Zubac            I. Zubac alley-oop DUNK (16 PTS) (P. Siakam 1 AST)
+    >> Q4 07:08.0  seq  505  other                               NOP Timeout
+    >> Q4 07:08.0  seq  506  sub          Derik Queen            SUB out: D. Queen  IN Jeremiah Fears / OUT Derik Queen
+    >> Q4 07:08.0  seq  508  sub          Saddiq Bey             SUB out: S. Bey  IN Trey Murphy III / OUT Saddiq Bey
+    >> Q4 07:08.0  seq  510  sub          Bennedict Mathurin     SUB out: B. Mathurin  IN Zion Williamson / OUT Bennedict Mathurin
+    >> Q4 07:08.0  seq  512  sub          Herbert Jones          SUB out: H. Jones  IN Yves Missi / OUT Herbert Jones
+    >> Q4 07:08.0  seq  514  sub          Tyrese Haliburton      SUB out: T. Haliburton  IN Andrew Nembhard / OUT Tyrese Haliburton
+    >> Q4 07:08.0  seq  516  foul         Tyrese Haliburton      T. Haliburton technical technical FOUL (1 Tech)
+    >> Q4 07:08.0  seq  517  ft           Trey Murphy III        T. Murphy III Free Throw 1 of 1 (9 PTS)
+       our home lineup at Q4 07:08.0: Dejounte Murray, Zion Williamson, Trey Murphy III, Yves Missi, Jeremiah Fears
+       our away lineup at Q4 07:08.0: Kelly Oubre Jr., Pascal Siakam, Ivica Zubac, Andrew Nembhard, Quenton Jackson
+   timeline around Q4 04:14.0:
+       Q4 04:30.0  seq  541  fg           Ivica Zubac            MISS I. Zubac turnaround bank Hook
+       Q4 04:30.0  seq  542  rebound      Jeremiah Fears         J. Fears REBOUND (Off:1 Def:2)
+       Q4 04:18.0  seq  543  fg           Dejounte Murray        MISS D. Murray 28' 3PT
+       Q4 04:18.0  seq  544  rebound      Zion Williamson        Z. Williamson REBOUND (Off:1 Def:2)
+    >> Q4 04:14.0  seq  545  foul         Ivica Zubac            I. Zubac shooting personal FOUL (4 PF) (Williamson 2 FT)
+    >> Q4 04:14.0  seq  546  ft           Zion Williamson        Z. Williamson Free Throw 1 of 2 (18 PTS)
+    >> Q4 04:14.0  seq  547  sub          Kelly Oubre Jr.        SUB out: K. Oubre Jr.  IN Tyrese Haliburton / OUT Kelly Oubre Jr.
+    >> Q4 04:14.0  seq  549  sub          Quenton Jackson        SUB out: Q. Jackson  IN Pascal Siakam / OUT Quenton Jackson
+    >> Q4 04:14.0  seq  551  ft           Zion Williamson        Z. Williamson Free Throw 2 of 2 (19 PTS)
+       Q4 04:00.0  seq  552  fg           Pascal Siakam          P. Siakam 8' driving Hook (24 PTS) (T. Haliburton 11 AST)
+       our home lineup at Q4 04:14.0: Dejounte Murray, Zion Williamson, Trey Murphy III, Yves Missi, Jeremiah Fears
+       our away lineup at Q4 04:14.0: Pascal Siakam, Ivica Zubac, Andrew Nembhard, Obi Toppin, Tyrese Haliburton

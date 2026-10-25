@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-25T18:56:19+00:00",
+  "generated_utc": "2026-10-25T20:07:41+00:00",
   "rotation_unavailable_games": {
     "2024-25": 440,
     "2025-26": 1084,
@@ -518,22 +518,6 @@
       "pacers_game": false,
       "shadow_rebuild_lineup_ok": null,
       "starters": "{'P1:1610612759': {'starters': [1628368, 1630170, 1641705, 1642264, 1642844], 'method': 'events'}, 'P1:1610612745': {'starters': [201142, 1627832, 1630578, 1631095, 1641708], 'method': 'events'}, 'P2:1610612759': {'starters': [1628368, 1629640, 1630577, 1641705, 1642264], 'method': 'events'}, 'P2:1610612745': {'starters': [203935, 1630578, 1631095, 1631106, 1641708], 'method': 'events'}, 'P3:1610612759': {'starters': [1628368, 1630577, 1641705, 1642264, 1642844], 'method': 'events'}, 'P3:1610612745': {'starters': [201142, 203935, 1627832, 1630578, 1641708], 'method': 'events'}, 'P4:1610612759': {'starters': [1628368, 1630170, 1630577, 1641705, 1642844], 'method': 'events'}, 'P4:1610612745': {'starters': [201142, 203935, 1631095, 1631106, 1641708], 'method': 'events'}}"
-    },
-    {
-      "game_id": "0022600111",
-      "season": "2026-27",
-      "season_type": "regular",
-      "failed_checks": "minutes",
-      "group": "C",
-      "residuals": "minutes=300",
-      "stint_method": "pbp_rebuild",
-      "rebuild_attempted": true,
-      "rotation_available": false,
-      "rotation_unmatched": null,
-      "pbp_subs_off": null,
-      "pacers_game": false,
-      "shadow_rebuild_lineup_ok": null,
-      "starters": "{'P1:1610612756': {'starters': [1626164, 1628415, 1628970, 1630224, 1642863], 'method': 'events'}, 'P1:1610612744': {'starters': [1630314, 1630611, 1642865, 1642954, 1643633], 'method': 'events'}, 'P2:1610612756': {'starters': [1628415, 1628970, 1630692, 1642346, 1642863], 'method': 'events'}, 'P2:1610612744': {'starters': [1629001, 1629646, 1630611, 1642865, 1643018], 'method': 'events'}, 'P3:1610612756': {'starters': [1626164, 1628415, 1628970, 1631221, 1642863], 'method': 'events'}, 'P3:1610612744': {'starters': [1629646, 1630314, 1630611, 1642865, 1642954], 'method': 'events'}, 'P4:1610612756': {'starters': [1626164, 1628970, 1630692, 1631221, 1642346], 'method': 'events'}, 'P4:1610612744': {'starters': [1627780, 1642502, 1642865, 1642954, 1643018], 'method': 'events'}, 'P5:1610612756': {'starters': [1626164, 1628415, 1628970, 1630224, 1630692], 'method': 'events+prev_period'}, 'P5:1610612744': {'starters': [1629001, 1630314, 1642865, 1642954, 1643633], 'method': 'events+prev_period'}}"
     }
   ],
   "kept_with_notes": [
@@ -1482,8 +1466,7 @@
       "pbp_rebuild/D": 1
     },
     "2026-27": {
-      "pbp_rebuild/B": 3,
-      "pbp_rebuild/C": 1
+      "pbp_rebuild/B": 3
     }
   }
 }
