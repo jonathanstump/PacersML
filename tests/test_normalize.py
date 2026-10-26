@@ -35,3 +35,14 @@ def test_v3_sub_resolved_from_roster_either_direction():
     ]}}
     ev = events_v3(payload, "g", box)
     assert ev[["in_id", "out_id"]].values.tolist() == [[16, 14], [16, 14]]
+
+
+def test_live_technical_ft_from_descriptor():
+    # 2026-27 (0022600090 Q4 07:08): the text no longer says "Technical"; the descriptor does
+    payload = {"game": {"actions": [
+        _action(actionType="freethrow", subType="1 of 1", descriptor="technical", shotResult="Made", personId=7,
+                description="T. Murphy III Free Throw 1 of 1 (9 PTS)"),
+        _action(actionType="freethrow", subType="1 of 2", shotResult="Made", personId=7,
+                description="T. Murphy III Free Throw 1 of 2 (10 PTS)"),
+    ]}}
+    assert events_live(payload, "g").technical.tolist() == [True, False]

@@ -627,3 +627,43 @@ Pacers game 0022600090 is down to a plus-minus gap of 1. A new failure, 00226001
 players +300 s), came from NBA tagging the "Game End" action with period 5 in a regulation game (box 14,401 team
 seconds, 131-122 at the end of Q4), which created a phantom overtime. Fix: liveData game-end actions are skipped
 (they carry no play). Only this game in the 2,669 cached liveData files has a game end in an unplayed period.
+
+---
+
+## D23 — Item 3 review: period starters, 0022600090, player possession gap (2026-10-25, Phase 1)
+
+**Period-starter spot check (D10): passed, 26 of 26.** Every period-start lineup, both teams, in three Pacers
+2024-25 games matches Basketball-Reference's Plus/Minus chart (Jonathan, filled in
+`reports/spot_checks/pacers_period_starters_2024-25.csv`).
+
+| game | builder | periods | match |
+|---|---|---|---|
+| 0022400009 vs MIA | hybrid | Q1–Q4 | 8/8 |
+| 0022400254 at HOU | rebuild | Q1–Q4 | 8/8 |
+| 0022400097 vs PHI | hybrid | Q1–OT1 | 10/10 |
+
+**Player possession gap (D7 flag): accepted as a definition difference (Jonathan, option 1).** Report-only, no
+change. Jonathan's fit of regular-season players with 20+ games: the gap splits into a part proportional to
+playing time (0.82% of possessions in 2024-25, 0.68% in 2025-26, in line with the −0.71% team gap accepted in D19)
+and a fixed part per game (0.53 and 0.56 possessions), spread ~0.2 possessions per game. Counting each possession
+once, for one lineup, stays the input for RAPM. Optional later check for METHODS: mid-possession substitutions per
+player-game against the fixed part.
+
+**0022600090 (2026-27, Pacers): gap traced to Q4 07:08, a bug (fixed).** At 07:08 NOP subs Fears, Murphy,
+Williamson, Missi for Queen, Bey, Mathurin, Jones and IND subs Nembhard for Haliburton; Haliburton then gets a
+technical and Murphy makes the free throw — exactly the ten players and one point in the gap (Jonathan's trace).
+Cause: in 2026-27 liveData no longer writes "Technical" in a technical free throw's text ("T. Murphy III Free Throw
+1 of 1"); only the `descriptor` field says `technical`. All 20 technical FTs in the 2026-27 cache (15 games) have
+the new form; none of the 2024-25 / 2025-26 ones do (2,297 with "technical" in the text). So these FTs were
+treated as ordinary FTs: credited to the last play before the trip (the pre-sub lineup) instead of the
+technical foul (D8), the D14 allowance didn't see a technical FT, and they counted toward possessions.
+Fix: the descriptor also marks a free throw technical. Offline re-check of the 15 games:
+
+| game | before | after | possessions |
+|---|---|---|---|
+| 0022600090 | quarantined (pm 1) | passes, exact | — |
+| 0022600101 | quarantined (pm 2) | kept with note (D14, pm 2) | — |
+| 0022600003, 0022600004, 0022600092 | clean | clean | −2 each |
+| 10 others | clean / noted | unchanged | 0 |
+
+Applied to all seasons on the next refresh (2024-25 / 2025-26 unaffected).

@@ -120,8 +120,10 @@ def events_live(payload: dict, game_id: str) -> pd.DataFrame:
             r.update(etype="fg", made=made, value=value, points=value * made)
         elif at == "freethrow":
             n, of = _ft_parts(st)
+            # 2026-27: the text dropped "Technical" ("Free Throw 1 of 1"); only the descriptor still says so
             r.update(etype="ft", made=made, value=1, points=int(made), ft_num=n, ft_of=of,
-                     technical="technical" in st or "technical" in r["desc"].lower())
+                     technical="technical" in st or "technical" in r["desc"].lower()
+                     or (a.get("descriptor") or "").lower() == "technical")
         elif at == "substitution":
             r.update(etype="sub", in_id=r["person_id"] if st == "in" else 0,
                      out_id=r["person_id"] if st == "out" else 0)
