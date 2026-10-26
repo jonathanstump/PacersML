@@ -1,0 +1,38 @@
+{
+  "seasons": {
+    "2024-25": {
+      "frozen": true,
+      "frozen_utc": "2026-10-26T04:14:55+00:00",
+      "games": 1320,
+      "hash": {
+        "player_game": "0bd48f21c8c7ec72",
+        "stints": "965327dd719878f5"
+      },
+      "quarantined": 20,
+      "rotation_files": 886,
+      "rotation_stopped": true,
+      "rows": {
+        "per100": 881,
+        "player_game": 27795,
+        "stints": 39883
+      }
+    },
+    "2025-26": {
+      "frozen": true,
+      "frozen_utc": "2026-10-26T04:21:00+00:00",
+      "games": 1321,
+      "hash": {
+        "player_game": "3c049dd475753aac",
+        "stints": "c1bc25f978a584ad"
+      },
+      "quarantined": 8,
+      "rotation_files": 237,
+      "rotation_stopped": true,
+      "rows": {
+        "per100": 903,
+        "player_game": 28518,
+        "stints": 42957
+      }
+    }
+  }
+}
