@@ -672,7 +672,7 @@ Applied to all seasons on the next refresh (2024-25 / 2025-26 unaffected).
 
 ## D24 — Rotation pass stopped; training seasons freeze with the PBP rebuild for the rest (2026-10-26, Phase 1)
 
-Rotation pass part 4 (`data/rotation_pass_part4.log`, `--interval 60`, 2026-10-25 20:11 to ~02:20 UTC): 6 new
+Rotation pass part 4 (`data/rotation_pass_part4.log`, `--interval 60`, 2026-10-25 20:11 to ~02:21 UTC, stopped during a 2 h backoff): 7 new
 files (2024-25), 5 throttle backoffs. Coverage at the stop: 2024-25 886/1,320, 2025-26 237/1,321, 2026-27 3/43.
 
 Options given: (1) stop now and freeze, the rest keeps the PBP rebuild; (2) run one more day, then (1);
