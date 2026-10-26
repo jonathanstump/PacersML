@@ -110,6 +110,11 @@ Player 15 never appears in an event and is filled in by the rebuild from box-sco
   family name against that team's box score. Two players with the same family name on one team → unresolved.
 - Both PBP normalizers have been run on one real game (0022500005) with every check passing; a full season is the
   real test. liveData is the primary PBP source (it records who drew each foul); v3 is the fallback.
+- **Most of the frozen data uses the rebuild.** gamerotation throttled us for days, and the pass was stopped (D24).
+  Rotation files: 2024-25 886 of 1,320 games, 2025-26 237 of 1,321, so 2025-26 is 82% rebuild. Evidence that the
+  rebuild holds up: quarantine rates of 1.8% (2024-25) and 0.55% (2025-26) against 1.4% and 0.8% for the hybrid,
+  and the Pacers period-starter spot check (D23: 26 of 26, including a rebuild game). The formal test is the
+  Phase 3 RAPM fit on hybrid games only, compared with the full fit.
 
 **Questions you should be able to answer.**
 1. Which part of a stint does the hybrid take from the rotation file, which part from the play-by-play, and why
@@ -251,3 +256,90 @@ in the run summary and in `site_export/quarantine.json`.
 5. A hybrid game fails the minutes check and its shadow rebuild fails too. Does an alarm fire, and why?
 6. One player is 2.5 s over his box minutes and a teammate is 2.5 s under. Is the game kept? What if only the
    first player is off?
+
+---
+
+## 5. Archetype model: Gaussian mixture (Phase 2) — `src/pacersml/archetypes/`
+
+**Status:** written before fitting. Choices marked **[D25]** are Jonathan's and are filled in once logged.
+
+**What it does.** Each player-season becomes one point in a feature space: a handful of numbers describing how
+he plays (**[D25]** the feature set, the minutes cutoff, regular season only per D2). Each feature is standardized
+(minus its mean, divided by its standard deviation over the 2024-25 + 2025-26 training rows), so no feature counts
+for more just because of its units. A Gaussian mixture model (GMM) assumes these points come from k overlapping
+bell-shaped clouds. Each cloud has a center (the "typical" player of that archetype), a shape (which features vary
+together inside it), and a weight (its share of players). The fit (expectation–maximization) alternates two steps
+until nothing changes:
+1. Given the clouds, give each player a probability of belonging to each one.
+2. Given those probabilities, move each cloud's center, shape and weight to fit its players.
+
+Unlike k-means, every player gets a probability for every archetype, not just a label. A player between two
+roles shows up as 0.55 / 0.45, not as a confident member of one.
+
+**What gets reported for each k** (**[D25]** the k range; k is not chosen in this step):
+- **BIC** (Bayesian information criterion): how well the model fits, minus a penalty for every extra parameter.
+  Lower is better. It's shown across k as a curve; with ~1,000 rows it often keeps falling slowly, so it's an
+  input to your choice, not the choice.
+- **Held-out log-likelihood by time:** fit on 2024-25 rows only, score the 2025-26 rows. Rises when extra
+  archetypes describe real structure, flattens or falls when they only fit 2024-25 noise. (Time split, per the
+  data rules.)
+- **Cluster sizes:** player-seasons per archetype (hard assignment = most likely archetype), plus the sum of
+  membership probabilities, and the share of players whose top probability is under 0.6 (the "between roles"
+  share).
+- **The 8 players nearest each center:** by Mahalanobis distance under that archetype's own shape (distance in
+  standard deviations of that cloud), with their membership probability, season, minutes and feature values. The
+  center itself is printed in original units (e.g. "38% of shots at the rim") so you can name it.
+- **Stability**, three checks:
+  1. *Starts:* the same k fitted from 20 random starting points. Do they reach the same solution? Agreement is
+     measured with the adjusted Rand index (ARI: 1 = identical groupings, 0 = no better than chance) between each
+     fit's labels and the best fit's.
+  2. *Bootstrap:* 50 refits on resampled players (drawn with replacement). Each refit labels all original
+     players; ARI against the full fit. Also per archetype: how often its 8 nearest players stay together.
+  3. *Season-to-season:* fit on 2024-25 only and on 2025-26 only, assign every row with each model, ARI between
+     the two labelings. Archetypes that only exist in one season show up here.
+  Archetype numbers change between refits (archetype 3 in one fit may be archetype 5 in another). They are matched
+  to the full fit by center distance (Hungarian matching) before anything is compared.
+
+**After you pick k:** the model (scaler means and SDs, centers, shapes, weights) is saved and frozen with a hash
+in the manifest. 2026-27 player-seasons are standardized with the training means and SDs and *assigned* to the
+frozen archetypes, never used to refit (data rules).
+
+**Toy example.** Two features, 3PA share of FGA and AST/100, five players, k = 2. For simplicity both clouds are
+round with the same spread (σ = 0.75 in standardized units).
+
+| player | 3PA share | AST/100 | z(3PA) | z(AST) | dist to A | dist to B | P(archetype A) |
+|---|---|---|---|---|---|---|---|
+| 1 | 0.60 | 4 | 1.20 | 0.39 | 0.50 | 2.76 | 1.00 |
+| 2 | 0.55 | 5 | 0.98 | 1.37 | 0.50 | 3.24 | 1.00 |
+| 3 | 0.05 | 3 | −1.24 | −0.59 | 2.76 | 0.50 | 0.00 |
+| 4 | 0.10 | 2 | −1.02 | −1.57 | 3.24 | 0.50 | 0.00 |
+| 5 | 0.35 | 4 | 0.09 | 0.39 | 1.11 | 1.91 | 0.90 |
+
+Center A (players 1–2) sits at z = (1.09, 0.88), center B (3–4) at (−1.13, −1.08). Player 5 is closer to A, so
+P(A) = exp(−1.11²/2σ²) / [exp(−1.11²/2σ²) + exp(−1.91²/2σ²)] = 0.90. A real fit also learns each cloud's shape
+and weight, and recomputes the centers using these probabilities.
+
+**What could make it wrong.**
+- **Features that measure quality, not style.** Efficiency stats (FG%, TS%) or volume stats that rise with
+  talent (points/100) produce "good player" clusters. Then a shooting slump looks like a role change (H2), and
+  RAPM interactions (H4) count quality twice. This is why the feature set (**[D25]**) is the main decision.
+- **Correlated features double-count.** FGA/100 and points/100 carry nearly the same information; including both
+  makes "volume" count twice as much as anything else.
+- **Small samples.** A 300-minute player's rates are noisy and land at the edges, where they can create or pull
+  a cluster. The minutes cutoff (**[D25]**) trades sample size against noise.
+- **BIC with many rows** prefers more clusters, some of which split one role into fine shades. The held-out
+  likelihood and the stability checks are the counterweight.
+- **Local optima.** EM can stop at a poor solution; the 20 starts show whether that happens.
+- **Shape assumptions.** Full covariance (each cloud its own tilt and spread) fits better but needs many more
+  parameters per cloud; with k = 12 and ~12 features that's ~1,000 parameters on ~1,000 rows, and small clouds can
+  collapse onto a few players. **[D25]** the covariance type.
+- **Player-seasons are not independent.** The same player appears twice (once per season), so bootstrap
+  stability is a bit optimistic.
+- **Team context.** Rates reflect role on a given team; a traded player's season pools two roles.
+
+**Questions you should be able to answer.**
+1. Why standardize the features, and what would happen to the clusters if 3PA share (0–1) and AST/100 (0–15)
+   were used raw?
+2. BIC keeps falling up to k = 15, but the bootstrap ARI drops below 0.5 after k = 8. What does each tell you?
+3. A player is 0.55 archetype 2 and 0.45 archetype 6 in 2025-26 and 0.95 archetype 6 in 2026-27. Did he change
+   roles? What else would you check?
