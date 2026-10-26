@@ -86,3 +86,17 @@ def dash_team_advanced(c: Client, season: str, season_type: str) -> pd.DataFrame
                                         "SeasonType": SEASON_TYPES[season_type],
                                         "PerMode": "Totals", "MeasureType": "Advanced"})
     return _result_set(p)
+
+
+def box_advanced_v3(c: Client, game_id: str) -> dict:
+    """Per-player advanced box, incl. NBA's possession count (D28: denominator for Group C quarantined games)."""
+    return c.stats("boxscoreadvancedv3", {"GameID": game_id, "StartPeriod": 0, "EndPeriod": 0,
+                                          "StartRange": 0, "EndRange": 0, "RangeType": 0})
+
+
+def box_advanced_possessions(payload: dict) -> pd.Series:
+    """person_id -> NBA possessions, from a boxscoreadvancedv3 payload."""
+    b = payload["boxScoreAdvanced"]
+    rows = {int(p["personId"]): p["statistics"].get("possessions")
+            for side in ("homeTeam", "awayTeam") for p in b[side]["players"]}
+    return pd.Series(rows, dtype=float, name="poss_nba")

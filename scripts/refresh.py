@@ -40,6 +40,7 @@ from pacersml.data.per100 import season_per100  # noqa: E402
 from pacersml.data.pipeline import (BOX_FETCHERS, PACERS, PBP_FETCHERS, UNAVAILABLE, game_list,  # noqa: E402
                                     load_game, process_game)
 from pacersml.data.sources import stats_nba  # noqa: E402
+from pacersml.data.tracking import tracking_player_game  # noqa: E402
 from pacersml.data.validate import (gap_direction, plot_season,  # noqa: E402
                                     player_poss_check, team_poss_check)
 
@@ -91,6 +92,20 @@ def fetch_game(c: Client, season: str, gid: str, source: str, status: dict, fetc
             time.sleep(wait)
             if preflight(status, gid, quiet=True):
                 c.blocked_hosts.clear()
+
+
+def nba_game_possessions(c: Client, season: str, gid: str) -> pd.Series | None:
+    """NBA per-player possessions for one game (boxscoreadvancedv3, cached raw), or None if unavailable (D28)."""
+    hit = cache.find_raw(season, ["stats_box_adv"], gid)
+    if hit is None:
+        try:
+            payload = stats_nba.box_advanced_v3(c, gid)
+        except UNAVAILABLE as e:
+            print(f"  {gid}: NBA advanced box unavailable ({e}); tracking possessions left empty (D28)")
+            return None
+        cache.write_raw(payload, season, "stats_box_adv", gid)
+        hit = ("stats_box_adv", payload)
+    return stats_nba.box_advanced_possessions(hit[1])
 
 
 def rotation_ledger(season: str) -> tuple[Path, dict]:
@@ -321,6 +336,12 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
 
     clean_stints.to_parquet(out / "stints.parquet", index=False)
     clean_pg.to_parquet(out / "player_game.parquet", index=False)
+    if season not in TRAINING_SEASONS:  # D28: quarantined games kept for individual tracking only
+        track = tracking_player_game(pg, quarantine, lambda gid: nba_game_possessions(c, season, gid))
+        track.to_parquet(out / "player_game_tracking.parquet", index=False)
+        nq = track[track.quarantined].game_id.nunique()
+        print(f"  tracking table: {track.game_id.nunique()} games ({nq} quarantined, kept for individual tracking "
+              f"only; {track[track.poss_source != 'stints'].game_id.nunique()} with NBA possession counts) (D28)")
     per100.to_parquet(out / "player_season_per100.parquet", index=False)
     team_tbl.to_parquet(out / "team_poss_check.parquet", index=False)
     player_tbl.to_parquet(out / "player_poss_check.parquet", index=False)
