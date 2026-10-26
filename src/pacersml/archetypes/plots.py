@@ -47,7 +47,7 @@ def _save(fig, path: Path) -> None:
 # ---------------------------------------------------------------- sweep
 
 def _by_k(sweep: pd.DataFrame, col: str, title: str, ylabel: str, path: Path, ref: float | None = None,
-          mark_elbow: bool = False) -> None:
+          mark_elbow: bool = False, ks=range(2, 16)) -> None:
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     ax.grid(axis="y")
     for i, cov in enumerate(["full", "tied", "diag"]):
@@ -58,14 +58,14 @@ def _by_k(sweep: pd.DataFrame, col: str, title: str, ylabel: str, path: Path, re
         last = s.iloc[-1]
         ax.annotate(cov, (last.k, last[col]), xytext=(6, 0), textcoords="offset points", va="center",
                     color=INK2, fontsize=9)
-        if mark_elbow and s.elbow.any():
+        if mark_elbow and "elbow" in s and s.elbow.any():
             e = s[s.elbow].iloc[0]
             ax.plot(e.k, e[col], marker="o", ms=10, mfc="none", mec=INK, mew=1.2)
             ax.annotate(f"elbow k={int(e.k)}", (e.k, e[col]), xytext=(0, 10), textcoords="offset points",
                         ha="center", fontsize=8, color=INK2)
     if ref is not None:
         ax.axhline(ref, color=MUTED, lw=1, ls="--")
-    ax.set_xticks(range(2, 16))
+    ax.set_xticks(list(ks))
     ax.set_xlabel("k (clusters)")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
@@ -73,25 +73,28 @@ def _by_k(sweep: pd.DataFrame, col: str, title: str, ylabel: str, path: Path, re
     _save(fig, path)
 
 
-def sweep_plots(sweep: pd.DataFrame, out: Path) -> None:
+def sweep_plots(sweep: pd.DataFrame, out: Path, ks=range(2, 16), prefix: str = "") -> None:
     n = int(sweep.n_rows.iloc[0])
-    _by_k(sweep, "bic", f"BIC by k (lower is better; {n} player-seasons)", "BIC", out / "bic_by_k.png",
-          mark_elbow=True)
-    _by_k(sweep, "heldout_ll_per_row", "Held-out log-likelihood: fit 2024-25, score 2025-26 (higher is better)",
-          "mean log-likelihood per 2025-26 row", out / "heldout_ll_by_k.png")
-    _by_k(sweep, "ari_boot_median", "Bootstrap stability: median ARI vs main fit (50 resamples)",
-          "adjusted Rand index", out / "bootstrap_ari_by_k.png")
-    _by_k(sweep, "retention_min", "Least stable cluster: lowest share of players kept across bootstraps",
-          "share kept (dashed = 0.70)", out / "retention_min_by_k.png", ref=0.7)
-    _by_k(sweep, "ari_seasons", "Season-to-season: ARI between 2024-25-only and 2025-26-only models",
-          "adjusted Rand index", out / "season_ari_by_k.png")
-    _by_k(sweep, "n_params", f"Parameters per model (dashed = {n} rows)", "free parameters",
-          out / "n_params_by_k.png", ref=n)
+    kw = {"ks": ks}
+    _by_k(sweep, "bic", f"{prefix}BIC by k (lower is better; {n} player-seasons)", "BIC", out / "bic_by_k.png",
+          mark_elbow=True, **kw)
+    _by_k(sweep, "heldout_ll_per_row", f"{prefix}Held-out log-likelihood: fit 2024-25, score 2025-26 (higher is "
+          "better)", "mean log-likelihood per 2025-26 row", out / "heldout_ll_by_k.png", **kw)
+    _by_k(sweep, "ari_boot_median", f"{prefix}Bootstrap stability: median ARI vs main fit (50 resamples)",
+          "adjusted Rand index" + (" (dashed = 0.60)" if prefix else ""), out / "bootstrap_ari_by_k.png",
+          ref=0.6 if prefix else None, **kw)
+    _by_k(sweep, "retention_min", f"{prefix}Least stable cluster: lowest share of players kept across bootstraps",
+          "share kept (dashed = 0.70)", out / "retention_min_by_k.png", ref=0.7, **kw)
+    _by_k(sweep, "ari_seasons", f"{prefix}Season-to-season: ARI between 2024-25-only and 2025-26-only models",
+          "adjusted Rand index", out / "season_ari_by_k.png", **kw)
+    _by_k(sweep, "n_params", f"{prefix}Parameters per model (dashed = {n} rows)", "free parameters",
+          out / "n_params_by_k.png", ref=n, **kw)
 
 
 # ---------------------------------------------------------------- packet charts
 
-def heatmap(zmean: pd.DataFrame, groups: list[str], labels: list[str], path: Path) -> None:
+def heatmap(zmean: pd.DataFrame, groups: list[str], labels: list[str], path: Path,
+            title: str = "Clusters x features: mean z-score", cbar: str = "mean z-score vs fitted players") -> None:
     """zmean: clusters x features (mean z-score), columns already in group order."""
     k, p = zmean.shape
     fig, ax = plt.subplots(figsize=(1.0 + 0.55 * p, 1.2 + 0.42 * k))
@@ -114,9 +117,9 @@ def heatmap(zmean: pd.DataFrame, groups: list[str], labels: list[str], path: Pat
     for s in ax.spines.values():
         s.set_visible(False)
     cb = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02)
-    cb.set_label("mean z-score vs fitted players", color=INK2)
+    cb.set_label(cbar, color=INK2)
     cb.outline.set_visible(False)
-    ax.set_title("Clusters x features: mean z-score", pad=26)
+    ax.set_title(title, pad=26)
     _save(fig, path)
 
 
@@ -145,7 +148,8 @@ def shot_mix(mix: pd.DataFrame, zone_labels: list[str], path: Path) -> None:
 
 
 def pca_map(xy: np.ndarray, top: np.ndarray, prob: np.ndarray, names: list[str], label_idx: list[int],
-            pacers: np.ndarray, var: tuple[float, float], cluster_names: list[str], path: Path) -> None:
+            pacers: np.ndarray, var: tuple[float, float], cluster_names: list[str], path: Path,
+            title: str = "Player-seasons on the first two principal components of the standardized features") -> None:
     fig, ax = plt.subplots(figsize=(10, 8))
     k = len(cluster_names)
     for c in range(k):
@@ -165,7 +169,7 @@ def pca_map(xy: np.ndarray, top: np.ndarray, prob: np.ndarray, names: list[str],
     ax.set_xlabel(f"PC1 ({var[0]:.0%} of variance)")
     ax.set_ylabel(f"PC2 ({var[1]:.0%} of variance)")
     ax.grid(True)
-    ax.set_title("Player-seasons on the first two principal components of the standardized features")
+    ax.set_title(title)
     _save(fig, path)
 
 

@@ -1,0 +1,13 @@
+cov,k,ok,bic,n_params,n_rows,heldout_ll_per_row,ari_starts_median,ari_boot_median,n_boot,ari_seasons,retention_min,subroles_under_70,error,stable,bic_best,candidate,near_tie,cov_candidate
+diag,1,True,14812.1717,34,303,-24.3019,1.0000,1.0000,50,1.0000,1.0000,0,,True,False,False,False,False
+diag,2,True,14051.3335,69,303,-22.7344,0.9547,0.6527,50,0.5900,0.8772,0,,True,False,False,False,False
+diag,3,True,13647.7630,104,303,-22.2441,0.7912,0.6173,50,0.5547,0.8275,0,,True,False,False,False,True
+diag,4,True,13463.6034,139,303,-22.1244,0.3712,0.3687,50,0.2656,0.5374,2,,False,False,False,False,False
+diag,5,True,13388.4065,174,303,-21.7234,0.5191,0.4403,50,0.3199,0.5184,5,,False,False,False,False,False
+diag,6,True,13289.3045,209,303,-21.3917,0.4427,0.4217,50,0.2633,0.5025,4,,False,False,False,False,False
+tied,1,True,11852.3295,170,303,-18.9028,1.0000,1.0000,50,1.0000,1.0000,0,,True,True,True,False,True
+tied,2,True,11903.4098,188,303,-19.0029,0.2110,0.1192,50,0.0684,0.6598,1,,False,False,False,False,False
+tied,3,True,11865.6488,206,303,-18.9724,0.8322,0.4427,50,-0.0036,0.6705,2,,False,False,False,False,False
+tied,4,True,11889.5756,224,303,-18.8525,0.9559,0.4144,50,0.1750,0.5559,3,,False,False,False,False,False
+tied,5,True,11857.7217,242,303,-18.8680,0.4869,0.3636,50,0.2061,0.4390,4,,False,False,False,False,False
+tied,6,True,11902.9343,260,303,-18.8198,0.4655,0.2898,50,0.2003,0.3097,6,,False,False,False,False,False

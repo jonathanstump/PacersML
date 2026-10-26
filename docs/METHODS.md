@@ -358,3 +358,75 @@ and weight, and recomputes the centers using these probabilities.
 2. BIC keeps falling up to k = 15, but the bootstrap ARI drops below 0.5 after k = 8. What does each tell you?
 3. A player is 0.55 archetype 2 and 0.45 archetype 6 in 2025-26 and 0.95 archetype 6 in 2026-27. Did he change
    roles? What else would you check?
+
+---
+
+## 6. Two-level archetypes: families and sub-roles (Phase 2) — `src/pacersml/archetypes/twolevel.py`, `scripts/archetypes_families.py`
+
+**Status:** level 1 frozen (D27). Level 2 swept, sub-role k not chosen.
+
+**What it does.** Two layers of the same kind of model (section 5).
+1. **Families (level 1).** The full-covariance k = 3 mixture from section 5, frozen. Every player-season gets a
+   probability for each of three families, P(F1), P(F2), P(F3).
+2. **Sub-roles (level 2).** Inside each family, a separate mixture finds finer roles. It is fitted only on the
+   family's clear members (top family with probability ≥ 0.6). Before fitting, the features are re-standardized
+   with that family's own mean and SD, so "a lot of corner 3s" means a lot *for this family*, not for the league.
+   Each family keeps its own scaler, and any player projected into a family's sub-model is standardized with it.
+   k = 1 to 6 is tried per family; k = 1 means the family has no stable inner structure.
+3. **Combined weight.** A player's weight on sub-role s of family f is P(f) × P(s | f). P(s | f) comes from
+   projecting the player into *every* family's sub-model, not just his top family's, so the weights over all
+   sub-roles add to 1. A player between two families keeps weight in both.
+
+Tiers (D25) apply at both levels: 500+ minutes = fitted and projected; 100–499 = projected, flagged low-sample;
+under 100 = family shares (mean P(f) over fitted player-seasons) × sub-role shares (mean P(s | f) over that
+family's training rows). 2026-27 (rolling windows too) is projected into both frozen levels, never refit.
+
+**Choosing sub-role k (D27).** Per family: BIC narrows the options, stability decides (median bootstrap ARI ≥ 0.6
+and no sub-role under 70% of its players kept), naming breaks ties. The report marks the candidate but doesn't
+pick it. Two readings of "BIC narrows" are both reported: across covariance types (tied vs diag compared on BIC)
+and within one covariance type.
+
+**Toy example.** Two families (G, B), each with two sub-roles. P(s | f) is from each family's own sub-model.
+
+| player | P(G) | P(B) | P(G1 \| G), P(G2 \| G) | P(B1 \| B), P(B2 \| B) | weight G1 | G2 | B1 | B2 |
+|---|---|---|---|---|---|---|---|---|
+| guard | 0.98 | 0.02 | 0.80, 0.20 | 0.50, 0.50 | 0.784 | 0.196 | 0.010 | 0.010 |
+| big | 0.01 | 0.99 | 0.30, 0.70 | 0.10, 0.90 | 0.003 | 0.007 | 0.099 | 0.891 |
+| straddler | 0.55 | 0.45 | 0.90, 0.10 | 0.20, 0.80 | 0.495 | 0.055 | 0.090 | 0.360 |
+| low-sample (300 min) | 0.70 | 0.30 | 0.60, 0.40 | 0.50, 0.50 | 0.420 | 0.280 | 0.150 | 0.150 |
+| unknown (< 100 min) | 0.60 (share) | 0.40 (share) | 0.70, 0.30 (shares) | 0.50, 0.50 (shares) | 0.420 | 0.180 | 0.200 | 0.200 |
+
+Each row adds to 1. The straddler is not forced into G: 45% of his weight sits in B's sub-roles, mostly B2. He
+was not in either family's training set (top probability under 0.6) but still gets weights by projection. The
+low-sample row is computed the same way and only flagged.
+
+**What could make it wrong.**
+- **Errors at level 1 carry into level 2.** A player put in the wrong family is scored by the wrong sub-model.
+  Combined weights soften this for straddlers, but a confident wrong family assignment isn't softened.
+- **Small families.** F3 has 152 training rows. A tied model has 153 covariance parameters before any means; tied
+  k = 1 there is one full-covariance Gaussian with 170 parameters on 152 rows, so its BIC rests on a covariance
+  estimate held up by the 0.0001 ridge (section 5). Diag needs far fewer parameters but ignores correlations, so
+  its BIC is worse even when its clusters are stable.
+- **Within-family standardization amplifies near-constant features.** If almost no bigs take pull-up 3s, the few
+  who do get large z-scores and can form a "sub-role" of their own. These features are flagged per family
+  (`feature_flags.md`); nothing is dropped without Jonathan's call.
+- **The 0.6 training cut** removes straddlers from fitting. Sub-roles describe clear family members; straddlers
+  are only projected.
+- **Comparing BIC across covariance types** compares models with different assumptions. Tied and diag can rank
+  differently from what stability says, which is why both readings are reported.
+- **Bootstrap optimism** (same player in two seasons) applies here as in section 5, with fewer rows per family.
+
+**Questions you should be able to answer.**
+1. A player has P(F2) = 0.52 and P(F3) = 0.48. Which sub-models does he get scored by, and why do his weights
+   still add to 1?
+2. Why does each family get its own scaler, and what goes wrong if a 2026-27 player projected into F3 is
+   standardized with the league scaler instead?
+3. In one family, tied k = 1 has the lowest BIC and diag k = 3 is stable with a BIC 300 higher. What does each
+   number tell you, and what extra information would you want before choosing?
+
+**Tracking table for quarantined games (D28, section 4 follow-up).** From 2026-27 on, `player_game_tracking.parquet`
+keeps every processed game's player box rows, quarantined games included (flagged), for individual tracking such
+as H2 rolling windows. Stints, `player_game.parquet`, per-100, RAPM and lineup outputs still leave quarantined games
+out. For Group C quarantines (a lineup check failed), that game's possessions are NBA's per-player count from
+`boxscoreadvancedv3`, because our stint count may be wrong for the players involved. NBA counts about 2% more
+possessions than we do (D23), roughly 0.2% within a 10-game window.

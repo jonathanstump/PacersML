@@ -764,3 +764,73 @@ Lowest BIC per covariance type (full table: `reports/archetypes/index.md`, `swee
 
 Naming packets built for the two covariance types with the lowest BIC, each at its BIC-best k ± 1: full k = 2,
 3, 4 and tied k = 12, 13, 14 (`reports/archetypes/k{K}/`). Diag is in the index only. k not chosen (Jonathan).
+
+---
+
+## D27 — Two-level archetypes (2026-10-26, Phase 2)
+
+Jonathan's text: "Two-level archetypes. Level 1: full-covariance GMM, k=3 (lowest BIC overall, 25,066; median ARI
+0.66; no cluster under 70% retained) defines three data-driven families. Level 2: a separate GMM inside each family
+defines sub-roles. Rationale: k=3 is too coarse to separate roles within a position (e.g. spacing vs rim-running
+bigs, needed for H1/H4); tied k=13 is unstable (median ARI 0.34); sub-roles nested in families keep lineup effects
+readable by position without relying on listed positions. Decided after seeing BIC and stability results, before
+any outcome (RAPM/lineup) data was examined."
+
+Setup (Jonathan):
+- **Level 1 frozen:** the D26 full k = 3 fit (k-means init), never refit; 2026-27 is only projected into it.
+  Families F1–F3 numbered by size (= C1–C3 of `reports/archetypes/k3/`). Artifacts:
+  `models/archetypes/level1_full_k3.pkl` and `.json` (every parameter, scaler, feature list); hashes in
+  `data/manifest.json` → `archetype_model.level1` (param hash fcc589f8fee7…). `scripts/archetypes_families.py`
+  stops if the frozen file's hash no longer matches.
+- **Level-2 training set:** top family with probability ≥ 0.6; stop and ask if a family excludes > 15% of its
+  top-assigned rows. Features re-standardized within each family (one scaler per family, used for every
+  projection into that family's sub-model). Near-constant / extremely skewed features flagged per family, not
+  dropped.
+- **Sweep:** k = 1–6 per family (k = 1 = no sub-structure), tied and diag; full only where its parameter count is
+  under half the family's training rows. Same init and checks as D26.
+- **Selection rule:** BIC narrows, stability decides (median bootstrap ARI ≥ 0.6 and no sub-role under 70% kept),
+  naming breaks ties. Candidates marked, not picked. If a family's only stable k is 1, that is the result.
+- **Combined membership:** weight on sub-role s of family f = P(f) × P(s | f), P(s | f) from every family's
+  sub-model; D25 tier rule at both levels; 2026-27 projected into both frozen levels, never refit.
+- **Hypothesis check** (Turner 2024-25 vs Zubac etc.) reported only, never used to select.
+
+**Results (2026-10-26, `reports/archetypes/families/`, `data/archetypes_families.log`):**
+
+| family | top-assigned | training (≥ 0.6) | excluded | full covariance allowed at |
+|---|---|---|---|---|
+| F1 | 306 | 303 | 3 (1.0%) | no k (full k = 1 has 170 parameters ≥ 152) |
+| F2 | 291 | 281 | 10 (3.4%) | no k (170 ≥ 140) |
+| F3 | 153 | 152 | 1 (0.7%) | no k (170 ≥ 76) |
+
+No family over 15%; no fit failed (all 17 features kept). Feature flags: charges drawn /100 extremely skewed in
+F1 and F2; in F3 pull-up 3 rate and charges drawn are near-constant and extremely skewed.
+
+| family | lowest BIC (stable?) | candidate under the rule (across covariance types) | same rule inside diag only |
+|---|---|---|---|
+| F1 | tied k = 1, 11,852 (yes) | tied k = 1 | diag k = 3 (13,648; ARI 0.62, min kept 83%) |
+| F2 | tied k = 3, 10,674 (no: ARI 0.12) | tied k = 1 (10,726) | diag k = 4 (12,570; ARI 0.63, min kept 78%) |
+| F3 | tied k = 4, 6,342 (no: ARI 0.50) | tied k = 1 (6,358) | diag k = 3 (6,655; ARI 0.73, min kept 80%) |
+
+Every tied k ≥ 2 fails stability in every family. Tied k = 1 is a single Gaussian with a full covariance matrix
+(170 parameters); the D27 parameter limit was written for full covariance only and was not applied to it (in F3,
+170 parameters on 152 rows). Because k = 1 is not the only stable k (diag has stable k ≥ 2 in all three
+families), packets were built for both readings: tied k = 1 ± 1 (only k = 2 has a packet) and diag at its
+within-diag candidate ± 1. **Open for Jonathan:** apply the rule across covariance types (→ k = 1 everywhere) or
+within a covariance type, and whether the full-covariance parameter limit also covers tied k = 1.
+
+---
+
+## D28 — Quarantined 2026-27 games: box stats kept for individual tracking (2026-10-26, Phase 2)
+
+Jonathan, option (a). His text: "Quarantined 2026-27 games keep their player box stats for individual tracking
+(e.g. H2 rolling windows) and stay excluded from anything built from stints (RAPM, lineup and on/off outputs). For
+quarantined games that failed lineup checks (Group C), per-100 rates for that game use NBA's possession count as
+the denominator, since our stint-based count may be wrong for affected players. NBA's count runs ~2% higher (D23),
+about a 0.2% effect within a 10-game window. These games are flagged in the tracker."
+
+Implementation: `refresh.py` writes `data/processed/{season}/player_game_tracking.parquet` for non-training
+seasons: every processed game's player rows, with `quarantined`, `quarantine_group` and `poss_source`. Group C
+rows get NBA's per-player possessions from `boxscoreadvancedv3` (cached raw as `stats_box_adv`) as both
+`poss_off` and `poss_def` (`poss_source = nba_box_advanced`); if NBA doesn't answer, possessions are left empty
+(`unavailable`). `player_game.parquet`, stints and per-100 are unchanged (quarantined games stay out). As of
+2026-10-26: 3 quarantined 2026-27 games, all Group B, none Pacers, so no NBA counts are used yet.

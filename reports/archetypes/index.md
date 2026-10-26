@@ -1,5 +1,7 @@
 # Archetype model: sweep and naming packets (Phase 2)
 
+**Two-level archetypes (D27): [families/index.md](families/index.md)** — level-1 families (frozen full k = 3) and sub-role sweeps and packets inside each family.
+
 750 player-seasons (500+ regular-season minutes, 2024-25 + 2025-26), 17 style features (D25), Gaussian mixture, k 2–15 × full / tied / diag covariance. Nothing here picks k.
 
 - Lowest BIC overall: **full, k = 3** (BIC 25,066).

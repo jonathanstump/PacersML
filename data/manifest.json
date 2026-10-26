@@ -1,4 +1,40 @@
 {
+  "archetype_model": {
+    "level1": {
+      "cov": "full",
+      "decision": "D27",
+      "features": [
+        "rim_share",
+        "short_mid_share",
+        "corner3_share",
+        "ab3_share",
+        "pullup3_rate",
+        "fta_rate",
+        "usage_per100",
+        "ast_per100",
+        "assisted_share",
+        "drive_rate",
+        "fouls_drawn_per100",
+        "oreb_pct",
+        "dreb_pct",
+        "stl_per100",
+        "blk_per100",
+        "pf_def_per100",
+        "charges_drawn_per100"
+      ],
+      "file_sha256": "a6a88fc462a38f0b8925065e267dad01d94915fb9b260e2d1b9cc5df2a9608f5",
+      "fit_rows": 750,
+      "frozen_utc": "2026-10-26T13:29:04+00:00",
+      "json": "models/archetypes/level1_full_k3.json",
+      "k": 3,
+      "param_sha256": "fcc589f8fee749e70464503a1c0cd2d26b56593d8ac8acb3735f4c1474135891",
+      "path": "models/archetypes/level1_full_k3.pkl",
+      "training_seasons": [
+        "2024-25",
+        "2025-26"
+      ]
+    }
+  },
   "seasons": {
     "2024-25": {
       "frozen": true,
