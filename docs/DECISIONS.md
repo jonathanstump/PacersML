@@ -690,3 +690,77 @@ Options given: (1) stop now and freeze, the rest keeps the PBP rebuild; (2) run 
 That run did not freeze (the D13 rule waits for rotation tries). `--rotation-stopped` records this decision:
 training seasons freeze with tries left, and the manifest stores `rotation_files` and `rotation_stopped: true`.
 2026-27 keeps trying gamerotation on weekly refreshes.
+
+---
+
+## D25 — Archetype model setup: features, cutoff, covariance, k range (2026-10-26, Phase 2)
+
+**Feature set: style only (Jonathan, option 1 of: style only / style + 3P% / style + efficiency).** Rationale
+(Jonathan): within-season 3P% noise (about ±3–4 points over a season, ±7 over a 10-game window) would cause
+false drift in H2. Gravity is represented through three-point attempt location and pull-up share. Shooting
+quality may enter later as a RAPM modifier (multi-season 3P% from the training seasons), not in the archetypes.
+
+Features (all from data already cached; shot detail from liveData play-by-play, so the frozen tables are
+unchanged), 17 in four groups:
+
+| group | feature | definition |
+|---|---|---|
+| shooting | rim, short mid, corner 3, above-break 3 share | FGA in Restricted Area / In The Paint (Non-RA) / Left+Right Corner 3 / Above the Break 3 (incl. backcourt), each ÷ FGA. Long mid (Mid-Range 2s) is 1 − the four, so it is left out of the fit (the five add to 1) but reported |
+| shooting | pull-up 3 rate | 3PA whose descriptor contains "pullup" or "step back", ÷ FGA (÷ FGA, not ÷ 3PA, so non-shooters aren't noisy) |
+| shooting | FTA rate | FTA ÷ FGA |
+| creation | usage /100 | (FGA + 0.44·FTA + TOV) per 100 offensive possessions |
+| creation | AST /100 | per 100 offensive possessions |
+| creation | assisted share | made FG with an assister ÷ made FG |
+| creation | drive rate | FGA whose descriptor contains "driving", ÷ FGA |
+| creation | fouls drawn /100 | per 100 offensive possessions (liveData games) |
+| rebounding | OREB%, DREB% | player OREB ÷ (team OREB + opponent DREB) while on the floor; DREB likewise |
+| defense | STL, BLK, defensive fouls, charges drawn /100 | per 100 defensive possessions |
+
+**Rows: 500+ regular-season minutes, one row per player-season, teams combined (Jonathan, option 1).** Players
+below the cutoff (Jonathan's three-tier rule, for RAPM and projection):
+
+| minutes in season | used to fit? | archetype weights |
+|---|---|---|
+| 500+ | yes | the model's membership probabilities |
+| 100–499 | no | projected into the frozen model, flagged low-sample |
+| under 100 | no | league shares of each archetype ("unknown" player) |
+
+Cutoffs 100 and 500 to revisit after the stability report. Same tiers in 2026-27; H2/H3 tracking projects
+rolling windows (not season totals) into the frozen model.
+
+**Covariance: compare full, diag and tied (Jonathan: option 1 plus tied).** Chosen by BIC, then bootstrap
+stability (a covariance type that only wins BIC where clusters keep < 70% of their players isn't chosen), then
+interpretability. Parameter count reported next to each BIC. Full covariance is limited by sample size (~170
+parameters per cluster with 17 features against ~850 rows).
+
+**k range: 2–15 for all three covariance types (Jonathan, option 1).** Upper bound set by cluster size (~57
+player-seasons per cluster at k = 15) and the number of RAPM features. If BIC is still falling at 15, the range is
+not extended: the elbow is marked and stability reported around it; the shortlist is the elbow and BIC's best
+value that stays stable.
+
+**Naming packets (Jonathan):** for the BIC-best k and one value either side, in `reports/archetypes/k{K}/`: blind
+profiles first, then the player reveal, charts, k transitions, stability, index. No names suggested.
+
+---
+
+## D26 — First archetype sweep: results, initialization fix (2026-10-26, Phase 2)
+
+Sweep (`scripts/archetypes_fit.py`, `data/archetypes_fit.log`): 750 player-seasons (2024-25 372, 2025-26 378;
+500+ minutes), 17 features, k 2–15 × full / tied / diag, 20 starts, 50 bootstrap refits each.
+
+**Bug fixed before reading any clusters.** The first run seeded the starts with k-means++ centers only
+(`init_params="k-means++"`). Every tied model from k = 2 to 12 converged to one center (log-likelihood −17.021
+per row at every k, the same as k = 1; ARI between starts ≈ 0). With a full k-means initialization (sklearn's
+default `"kmeans"`), tied k = 8 reaches −15.70 per row. All three covariance types were rerun with k-means
+initialization; only that run is reported.
+
+Lowest BIC per covariance type (full table: `reports/archetypes/index.md`, `sweep.csv`):
+
+| covariance | lowest BIC | k | parameters | elbow | median bootstrap ARI at that k | clusters < 70% kept |
+|---|---|---|---|---|---|---|
+| full | 25,066 | 3 | 512 | 6 | 0.66 | 0 of 3 |
+| tied | 25,291 | 13 | 386 | 9 | 0.34 | 10 of 13 |
+| diag | 27,763 | 15 (edge) | 524 | 6 | 0.43 | 14 of 15 |
+
+Naming packets built for the two covariance types with the lowest BIC, each at its BIC-best k ± 1: full k = 2,
+3, 4 and tied k = 12, 13, 14 (`reports/archetypes/k{K}/`). Diag is in the index only. k not chosen (Jonathan).

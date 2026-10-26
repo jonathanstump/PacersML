@@ -261,10 +261,18 @@ in the run summary and in `site_export/quarantine.json`.
 
 ## 5. Archetype model: Gaussian mixture (Phase 2) — `src/pacersml/archetypes/`
 
-**Status:** written before fitting. Choices marked **[D25]** are Jonathan's and are filled in once logged.
+**Status:** written before fitting; Jonathan's setup choices (D25) filled in. k is not chosen yet.
 
 **What it does.** Each player-season becomes one point in a feature space: a handful of numbers describing how
-he plays (**[D25]** the feature set, the minutes cutoff, regular season only per D2). Each feature is standardized
+he plays. Rows: player-seasons with 500+ regular-season minutes (D2, D25), teams combined for traded players.
+Features (D25): 17 style-only measures in four groups, with no efficiency stats (no FG%, 3P%, TS%):
+- *shooting:* share of FGA at the rim, short mid (paint, non-RA), corner 3, above-break 3 (long mid is the
+  remainder, so it is left out of the fit and only reported); pull-up/step-back 3PA per FGA; FTA per FGA;
+- *creation:* shot attempts + turnovers per 100, AST per 100, share of made FG assisted, driving FGA per FGA,
+  fouls drawn per 100;
+- *rebounding:* OREB%, DREB% (his rebounds ÷ the team's chances while he was on the floor);
+- *defense:* STL, BLK, defensive fouls and charges drawn per 100 defensive possessions.
+Shot zone, shot type and assister come from the liveData play-by-play. Each feature is standardized
 (minus its mean, divided by its standard deviation over the 2024-25 + 2025-26 training rows), so no feature counts
 for more just because of its units. A Gaussian mixture model (GMM) assumes these points come from k overlapping
 bell-shaped clouds. Each cloud has a center (the "typical" player of that archetype), a shape (which features vary
@@ -276,7 +284,7 @@ until nothing changes:
 Unlike k-means, every player gets a probability for every archetype, not just a label. A player between two
 roles shows up as 0.55 / 0.45, not as a confident member of one.
 
-**What gets reported for each k** (**[D25]** the k range; k is not chosen in this step):
+**What gets reported for each k** (k = 2–15, for full, tied and diag covariance, D25; k is not chosen in this step):
 - **BIC** (Bayesian information criterion): how well the model fits, minus a penalty for every extra parameter.
   Lower is better. It's shown across k as a curve; with ~1,000 rows it often keeps falling slowly, so it's an
   input to your choice, not the choice.
@@ -294,7 +302,8 @@ roles shows up as 0.55 / 0.45, not as a confident member of one.
      measured with the adjusted Rand index (ARI: 1 = identical groupings, 0 = no better than chance) between each
      fit's labels and the best fit's.
   2. *Bootstrap:* 50 refits on resampled players (drawn with replacement). Each refit labels all original
-     players; ARI against the full fit. Also per archetype: how often its 8 nearest players stay together.
+     players; ARI against the full fit. Also per archetype: the share of its players who keep the same archetype
+     across refits (retention), flagged under 70% (D25).
   3. *Season-to-season:* fit on 2024-25 only and on 2025-26 only, assign every row with each model, ARI between
      the two labelings. Archetypes that only exist in one season show up here.
   Archetype numbers change between refits (archetype 3 in one fit may be archetype 5 in another). They are matched
@@ -322,17 +331,23 @@ and weight, and recomputes the centers using these probabilities.
 **What could make it wrong.**
 - **Features that measure quality, not style.** Efficiency stats (FG%, TS%) or volume stats that rise with
   talent (points/100) produce "good player" clusters. Then a shooting slump looks like a role change (H2), and
-  RAPM interactions (H4) count quality twice. This is why the feature set (**[D25]**) is the main decision.
+  RAPM interactions (H4) count quality twice. This is why the feature set is style only (D25). Usage and the defensive rates still carry some quality.
 - **Correlated features double-count.** FGA/100 and points/100 carry nearly the same information; including both
   makes "volume" count twice as much as anything else.
 - **Small samples.** A 300-minute player's rates are noisy and land at the edges, where they can create or pull
-  a cluster. The minutes cutoff (**[D25]**) trades sample size against noise.
+  a cluster. The 500-minute cutoff (D25) trades sample size against noise. Players under it get projected weights (100–499
+  minutes, flagged) or league shares (under 100) for RAPM, never a refit.
 - **BIC with many rows** prefers more clusters, some of which split one role into fine shades. The held-out
   likelihood and the stability checks are the counterweight.
-- **Local optima.** EM can stop at a poor solution; the 20 starts show whether that happens.
+- **Local optima and initialization.** EM can stop at a poor solution; the 20 starts show whether that happens.
+  How the starts are seeded matters: with k-means++ seeding (centers only, no k-means run) every tied model from
+  k = 2 to 12 collapsed onto one center, the log-likelihood of a single Gaussian. Starts now run a full k-means
+  first (sklearn's default), D26.
 - **Shape assumptions.** Full covariance (each cloud its own tilt and spread) fits better but needs many more
   parameters per cloud; with k = 12 and ~12 features that's ~1,000 parameters on ~1,000 rows, and small clouds can
-  collapse onto a few players. **[D25]** the covariance type.
+  collapse onto a few players. Full, tied (one shape shared by all clouds) and diag (no correlations) are all
+  fitted, and the parameter count is reported next to each BIC (D25). Every covariance gets 0.0001 added to
+  its diagonal (standardized units) so a tiny cloud can't become singular.
 - **Player-seasons are not independent.** The same player appears twice (once per season), so bootstrap
   stability is a bit optimistic.
 - **Team context.** Rates reflect role on a given team; a traded player's season pools two roles.
