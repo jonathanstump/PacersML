@@ -667,3 +667,26 @@ Fix: the descriptor also marks a free throw technical. Offline re-check of the 1
 | 10 others | clean / noted | unchanged | 0 |
 
 Applied to all seasons on the next refresh (2024-25 / 2025-26 unaffected).
+
+---
+
+## D24 — Rotation pass stopped; training seasons freeze with the PBP rebuild for the rest (2026-10-26, Phase 1)
+
+Rotation pass part 4 (`data/rotation_pass_part4.log`, `--interval 60`, 2026-10-25 20:11 to ~02:20 UTC): 6 new
+files (2024-25), 5 throttle backoffs. Coverage at the stop: 2024-25 886/1,320, 2025-26 237/1,321, 2026-27 3/43.
+
+Options given: (1) stop now and freeze, the rest keeps the PBP rebuild; (2) run one more day, then (1);
+(3) run for days, Phase 2 waits.
+
+**Decision (Jonathan): option 1** (stopped the pass and ran the final refresh). Final refresh
+(`data/refresh_final.log`): exit 0, no regressions in any season; 2026-27: 0022600090 and 0022600101 fixed (D23).
+
+| season | games | hybrid (q) | rebuild (q) | quarantined | kept with notes |
+|---|---|---|---|---|---|
+| 2024-25 | 1,320 | 886 (12) | 434 (8) | 20 (1.52%) | 36 |
+| 2025-26 | 1,321 | 236 (2) | 1,085 (6) | 8 (0.61%) | 64 |
+| 2026-27 | 42 of 43 | 2 (0) | 40 (2) | 2 (4.76%) | 4 |
+
+That run did not freeze (the D13 rule waits for rotation tries). `--rotation-stopped` records this decision:
+training seasons freeze with tries left, and the manifest stores `rotation_files` and `rotation_stopped: true`.
+2026-27 keeps trying gamerotation on weekly refreshes.

@@ -330,6 +330,8 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
                 df.to_parquet(out / f"nba_{k}_{st}.parquet", index=False)
 
     pending_rot = [gid for gid in no_rot.game_id if ledger.get(gid, 0) < ROTATION_TRIES] if use_rotation else []
+    if args.rotation_stopped:  # D24: Jonathan stopped the rotation pass; remaining games keep the PBP rebuild
+        pending_rot = []
     if season in TRAINING_SEASONS and pending_rot and not partial:
         print(f"  not frozen: {len(pending_rot)} games still have gamerotation tries left (run "
               f"scripts/rotation_pass.py, then refresh again) (D13)")
@@ -338,6 +340,7 @@ def run_season(c: Client, season: str, args, status: dict) -> int:
         m["seasons"][season] = {
             "frozen": True, "frozen_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "games": len(results), "quarantined": len(q_ids),
+            "rotation_files": len(results) - len(no_rot), "rotation_stopped": bool(args.rotation_stopped),
             "rows": {"stints": len(clean_stints), "player_game": len(clean_pg), "per100": len(per100)},
             "hash": {"stints": cache.frame_hash(clean_stints.drop(columns=["home_ids", "away_ids"])),
                      "player_game": cache.frame_hash(clean_pg)},
@@ -417,6 +420,9 @@ def main() -> int:
     ap.add_argument("--no-rotation-calls", action="store_true",
                     help="never call gamerotation; use cached rotation files only (that is rotation_pass.py's job). "
                          "A training season with rotation tries left is still not frozen")
+    ap.add_argument("--rotation-stopped", action="store_true",
+                    help="the rotation pass was stopped by decision (D24): freeze training seasons even though "
+                         "some games still have gamerotation tries left; those keep the PBP rebuild")
     ap.add_argument("--reorder-subs", action="store_true",
                     help="trial: move a sub after live-play events logged after it in the same second "
                          "(D8 amendment under test). Use with --no-write")
