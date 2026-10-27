@@ -1,4 +1,5 @@
-"""Phase 2: two-level archetypes (D27, METHODS section 6). Numbers only: no names, no interpretation, nothing picked.
+"""Phase 2: two-level archetypes (D27, METHODS section 6). Numbers only: no interpretation, nothing picked. Family
+names (D29) come from the versioned names file next to the frozen model; sub-roles stay unnamed.
 
     python -u scripts/archetypes_families.py                 # freeze level 1 (first run only), sub-role sweeps, reports
     python -u scripts/archetypes_families.py --report-only   # reports from the saved sweep
@@ -43,11 +44,13 @@ REPORTS = ROOT / "reports" / "archetypes"
 FAM = REPORTS / "families"
 MODELS = ROOT / "models" / "archetypes"
 L1_PATH = MODELS / "level1_full_k3.pkl"
+NAMES_PATH = MODELS / "level1_full_k3_names.json"   # D29
 SIAKAM, HALIBURTON, NEMBHARD, WALKER = 1627783, 1630169, 1629614, 1641716
 # D27 hypothesis-check players: (person_id, season or None for every training season)
 CHECK_PLAYERS = [(TURNER, "2024-25"), (ZUBAC, None), (HALIBURTON, "2024-25"), (NEMBHARD, None), (WALKER, None),
                  (SIAKAM, None)]
 STRADDLE = 0.7
+FAMILY_LABELS: list[str] = []   # D29 labels, filled from the names file in main()
 N_PCA_LABELS = 15
 
 
@@ -147,7 +150,7 @@ class Sub:
 # ---------------------------------------------------------------- family-level report
 
 def family_report(f1: Fit, feats_fit: pd.DataFrame, X: np.ndarray, league_seconds: float, pf_all: pd.DataFrame,
-                  exc: pd.DataFrame) -> None:
+                  exc: pd.DataFrame, names: dict) -> None:
     FAM.mkdir(parents=True, exist_ok=True)
     write_blind(f1, X, feats_fit, league_seconds, FAM / "profiles_blind.md")
     p = FAM / "profiles_blind.md"
@@ -155,7 +158,8 @@ def family_report(f1: Fit, feats_fit: pd.DataFrame, X: np.ndarray, league_second
         "# Blind cluster profiles, k = 3 (full covariance)",
         "# Blind family profiles (level 1: full covariance, k = 3, frozen)").replace(
         "Clusters are numbered by size (C1 = largest); the numbers carry no meaning and are not matched across k.",
-        "Families are numbered by size (F1 = largest); F1-F3 are C1-C3 of reports/archetypes/k3/."), encoding="utf-8")
+        "Families are numbered by size (F1 = largest); F1-F3 are C1-C3 of reports/archetypes/k3/. Family names: "
+        f"D29, `{NAMES_PATH.relative_to(ROOT).as_posix()}` (version {names['version']})."), encoding="utf-8")
 
     pos = feats_fit.position.fillna("?").replace("", "?")
     fam_lab = pd.Categorical([f1.names[t] for t in f1.top], f1.names)
@@ -168,7 +172,13 @@ def family_report(f1: Fit, feats_fit: pd.DataFrame, X: np.ndarray, league_second
     shares = tab.div(tab.sum(axis=1), axis=0)
     lines = ["# Level 1: families (full covariance, k = 3, frozen)", "",
              f"{len(X)} fitted player-seasons (500+ regular-season minutes, 2024-25 + 2025-26). Families F1-F3 are "
-             "C1-C3 of the k = 3 packet (numbered by size). No names.", "",
+             "C1-C3 of the k = 3 packet (numbered by size).", "",
+             f"## Family names (D29, names file version {names['version']}, keyed to model hash "
+             f"{names['model_param_sha256'][:12]})", "",
+             "Named by Jonathan from the blind profiles before viewing players.", "",
+             "| family | name | reason |", "|---|---|---|",
+             *[f"| {k} | {v['name']} | {v['reason']} |" for k, v in names["families"].items()], "",
+             f"Crosstab check: {names['crosstab_check']}", "",
              "Frozen model: `models/archetypes/level1_full_k3.pkl` (+ `.json` with every parameter); hashes in "
              "`data/manifest.json` under `archetype_model.level1`.", "",
              "## Family x listed position", "", "Counts (NBA playerindex position, current listing):", "",
@@ -196,12 +206,12 @@ def family_report(f1: Fit, feats_fit: pd.DataFrame, X: np.ndarray, league_second
         lines.append(f"| {player_label(r)} | {r.minutes} | {r.position or '?'} | {f1.names[r.top]} | {r.ptop:.3f} | "
                      f"{f1.names[r.second]} | {r.psecond:.3f} |")
     lines += ["", "## Family probabilities for the hypothesis-check players", "",
-              "| player-season | minutes | tier | " + " | ".join(f"P({n})" for n in f1.names) + " |",
+              "| player-season | minutes | tier | " + " | ".join(f"P({n})" for n in f1.names) + " |",  # labels
               "|---|---|---|" + "---|" * f1.k]
     ck = pf_all[pf_all.apply(is_check, axis=1)].sort_values(["name", "season"])
     for _, r in ck.iterrows():
         lines.append(f"| {player_label(r)} | {int(r.seconds / 60)} | {r.tier} | "
-                     + " | ".join(f"{r[f'P_{n}']:.3f}" for n in f1.names) + " |")
+                     + " | ".join(f"{r[f'P_F{c + 1}']:.3f}" for c in range(f1.k)) + " |")
     lines += ["", "## Level-2 training sets (top family with probability >= 0.6)", "",
               "| family | top-assigned | training | excluded | excluded share | over 15%? |", "|---|---|---|---|---|---|"]
     for r in exc.itertuples():
@@ -517,7 +527,7 @@ def write_hypothesis(feats: pd.DataFrame, fr: dict, subs: dict, sets: dict, cws:
               "| player-season | top family | P |", "|---|---|---|"]
     for ps in tz:
         q = pf[ps]
-        lines.append(f"| {raw.loc[ps, 'name']} {ps[1]} | F{q.argmax() + 1} | {q.max():.3f} |")
+        lines.append(f"| {raw.loc[ps, 'name']} {ps[1]} | {FAMILY_LABELS[q.argmax()]} | {q.max():.3f} |")
     lines += ["", "| family | cov | k | " + " | ".join(f"{raw.loc[ps, 'name'].split()[-1]} {ps[1]}" for ps in tz)
               + " | Turner vs each Zubac season |", "|---|---|---|" + "---|" * (len(tz) + 1)]
     own = {int(q.argmax()) for q in pf.values()}   # only families that are top for Turner or Zubac
@@ -542,7 +552,10 @@ def write_hypothesis(feats: pd.DataFrame, fr: dict, subs: dict, sets: dict, cws:
 
 def write_family_index(tables: dict, sets: dict, packets: dict, exc: pd.DataFrame) -> None:
     lines = ["# Two-level archetypes (D27)", "",
-             "Level 1 frozen (full covariance, k = 3). Level 2 swept inside each family; nothing picked, no names.", "",
+             "Level 1 frozen (full covariance, k = 3); family names D29: "
+             + "; ".join(FAMILY_LABELS) + ". Level 2 swept inside each family; nothing picked, sub-roles unnamed.", "",
+             "**D30 slicing diagnostics (D31 feature drops applied): [slicing/index.md](slicing/index.md).** The "
+             "sweeps and packets below are the D27 run with all 17 features, before the D31 drops.", "",
              "## Open first", "",
              "1. [families.md](families.md) and [profiles_blind.md](profiles_blind.md): level-1 families, position "
              "crosstab, straddlers, check players.",
@@ -602,7 +615,9 @@ def main() -> int:
     r3 = next(x for x in sw["results"] if x.cov == "full" and x.k == 3)
     f1 = Fit(r3, X, feats_fit)
     assert (f1.old == fr["order"]).all(), "family order differs from the k = 3 packet"
-    f1.names = [f"F{c + 1}" for c in range(3)]
+    names = tl.load_names(NAMES_PATH, fr)
+    FAMILY_LABELS[:] = tl.family_labels(names)
+    f1.names = list(FAMILY_LABELS)
     exc = tl.exclusions(pf_fit)
     print(exc.to_string(index=False), flush=True)
 
@@ -611,7 +626,7 @@ def main() -> int:
     for c in range(3):
         pf_all[f"P_F{c + 1}"] = np.nan
     pf_all.loc[proj, [f"P_F{c + 1}" for c in range(3)]] = tl.project(fr, feats.loc[proj, FEATURE_COLS].to_numpy(float))
-    family_report(f1, feats_fit, X, league_seconds, pf_all, exc)
+    family_report(f1, feats_fit, X, league_seconds, pf_all, exc, names)
     if exc.over_limit.any():
         print("a family excludes more than 15% of its top-assigned player-seasons: stop and ask (D27)")
         return 5

@@ -292,3 +292,76 @@ def transitions(levels: list[tuple[int, list[str], np.ndarray]], flows: list[np.
     ax.axis("off")
     ax.set_title("How clusters split and merge across k (band width = player-seasons; color = cluster on the left)")
     _save(fig, path)
+
+
+# ---------------------------------------------------------------- slicing test (D30)
+
+def pc_scatter(xy: np.ndarray, names: list[str], label_idx: list[int], pacers: np.ndarray, var: tuple[float, float],
+               title: str, path: Path) -> None:
+    """Training player-seasons of one family on its own PC1 x PC2; Pacers ringed, labeled rows named."""
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.scatter(xy[:, 0], xy[:, 1], s=24, color=SERIES[0], alpha=0.45, linewidths=0)
+    ax.scatter(xy[pacers, 0], xy[pacers, 1], s=70, facecolors="none", edgecolors=INK, linewidths=1.3)
+    _place_labels(fig, ax, xy, label_idx, names, pacers)
+    ax.legend(handles=[Line2D([], [], ls="", marker="o", color=SERIES[0], alpha=0.6, ms=6, label="player-season"),
+                       Line2D([], [], ls="", marker="o", mfc="none", mec=INK, ms=9, label="Pacers player-season")],
+              loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=8)
+    ax.axhline(0, color=AXIS, lw=0.8)
+    ax.axvline(0, color=AXIS, lw=0.8)
+    ax.set_xlabel(f"PC1 ({var[0]:.0%} of variance)")
+    ax.set_ylabel(f"PC2 ({var[1]:.0%} of variance)")
+    ax.grid(True)
+    ax.set_title(title)
+    _save(fig, path)
+
+
+def centroid_panels(xy: np.ndarray, panels: list[dict], var: tuple[float, float], title: str, path: Path) -> None:
+    """One panel per k: points colored by top diag cluster, cluster centers (projected onto PC1/PC2) as large
+    markers sized by weight. panels[i]: {k, top, centers (k x 2), weights, names, caption}."""
+    n = len(panels)
+    fig, axes = plt.subplots(1, n, figsize=(5.2 * n, 5.0), sharex=True, sharey=True, squeeze=False)
+    for ax, p in zip(axes[0], panels):
+        for c in range(p["k"]):
+            m = p["top"] == c
+            ax.scatter(xy[m, 0], xy[m, 1], s=12, color=color(c), alpha=0.35, linewidths=0, marker=marker(c))
+        for c in range(p["k"]):
+            cx, cy = p["centers"][c]
+            ax.scatter(cx, cy, s=120 + 900 * p["weights"][c], color=color(c), marker="X", edgecolors=INK,
+                       linewidths=1.2, zorder=3)
+            ax.annotate(p["names"][c], (cx, cy), xytext=(8, 6), textcoords="offset points", fontsize=8,
+                        weight="bold", color=INK, zorder=4)
+        ax.axhline(0, color=AXIS, lw=0.8)
+        ax.axvline(0, color=AXIS, lw=0.8)
+        ax.grid(True)
+        ax.set_title(f"diag k = {p['k']}", fontsize=10)
+        ax.text(0.01, -0.13, p["caption"], transform=ax.transAxes, fontsize=7.5, color=INK2, va="top")
+        ax.set_xlabel(f"PC1 ({var[0]:.0%})")
+    axes[0][0].set_ylabel(f"PC2 ({var[1]:.0%})")
+    fig.suptitle(title, x=0.01, ha="left", fontsize=11, weight="bold")
+    fig.tight_layout()
+    _save(fig, path)
+
+
+def pc_hist(scores: np.ndarray, fits: list[dict], var: np.ndarray, title: str, path: Path) -> None:
+    """Histogram of each PC's scores with the fitted 1- and 2-component 1-D Gaussian mixture densities.
+    fits[j]: twolevel.gmm_1d output, {k: {bic, weights, means, sds}} for k = 1, 2."""
+    from scipy.stats import norm
+    n = scores.shape[1]
+    fig, axes = plt.subplots(1, n, figsize=(5.2 * n, 3.8), squeeze=False)
+    for j, ax in enumerate(axes[0]):
+        x = scores[:, j]
+        ax.hist(x, bins=30, density=True, color=AXIS, edgecolor=SURFACE, linewidth=1)
+        g = np.linspace(x.min() - 0.5, x.max() + 0.5, 400)
+        for kk, col, ls in ((1, SERIES[0], "-"), (2, SERIES[1], "--")):
+            f = fits[j][kk]
+            w, mu, sd = f["weights"], f["means"], f["sds"]
+            ax.plot(g, sum(wi * norm.pdf(g, mi, si) for wi, mi, si in zip(w, mu, sd)), color=col, lw=2, ls=ls,
+                    label=f"{kk} component{'s' if kk > 1 else ''} (BIC {f['bic']:,.1f})")
+        ax.set_title(f"PC{j + 1} ({var[j]:.0%} of variance): BIC(2) - BIC(1) = "
+                     f"{fits[j][2]['bic'] - fits[j][1]['bic']:+.1f}", fontsize=9.5)
+        ax.set_xlabel(f"PC{j + 1} score")
+        ax.set_ylabel("density")
+        ax.legend(fontsize=7.5, loc="upper right")
+    fig.suptitle(title, x=0.01, ha="left", fontsize=11, weight="bold")
+    fig.tight_layout()
+    _save(fig, path)

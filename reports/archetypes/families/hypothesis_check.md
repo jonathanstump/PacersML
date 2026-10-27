@@ -44,9 +44,9 @@ Each player projected into the sub-models of his top family at every packet (cov
 
 | player-season | top family | P |
 |---|---|---|
-| Myles Turner 2024-25 | F3 | 1.000 |
-| Ivica Zubac 2024-25 | F3 | 1.000 |
-| Ivica Zubac 2025-26 | F3 | 1.000 |
+| Myles Turner 2024-25 | F3 Bigs | 1.000 |
+| Ivica Zubac 2024-25 | F3 Bigs | 1.000 |
+| Ivica Zubac 2025-26 | F3 Bigs | 1.000 |
 
 | family | cov | k | Turner 2024-25 | Zubac 2024-25 | Zubac 2025-26 | Turner vs each Zubac season |
 |---|---|---|---|---|---|---|

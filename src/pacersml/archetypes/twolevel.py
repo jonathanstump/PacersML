@@ -22,6 +22,32 @@ TRAIN_MIN_PROB = 0.6      # D27: family training set = top family with probabili
 MAX_EXCLUDED = 0.15       # D27: stop and ask if a family excludes more than this share of its top-assigned rows
 SUB_KS = range(1, 7)      # D27: k = 1 is "no sub-structure"
 STABLE_ARI, STABLE_KEPT = 0.6, 0.7
+L2_DROP_ALL = ["charges_drawn_per100"]       # D31: out of level 2 in every family (level 1 keeps it)
+L2_DROP_FAMILY = {2: ["pullup3_rate"]}       # D31: F3 only (0-based family index)
+
+
+def l2_features(f: int, cols: list[str]) -> list[str]:
+    """D31 level-2 feature list for family f (0-based)."""
+    drop = set(L2_DROP_ALL) | set(L2_DROP_FAMILY.get(f, []))
+    return [c for c in cols if c not in drop]
+
+
+# ---------------------------------------------------------------- family names (D29)
+
+def load_names(path: Path, frozen: dict) -> dict:
+    """Versioned names file keyed to the frozen model's parameter hash; stops if the hash doesn't match."""
+    import json
+    names = json.loads(path.read_text(encoding="utf-8"))
+    got = param_hash(frozen["model"], frozen["scaler"])
+    if names["model_param_sha256"] != got:
+        raise SystemExit(f"names file {path.name} is keyed to {names['model_param_sha256'][:12]}, model is {got[:12]}")
+    return names
+
+
+def family_labels(names: dict) -> list[str]:
+    """'F1 On-ball Shot Creators', ... in family order."""
+    fams = names["families"]
+    return [f"{k} {fams[k]['name']}" for k in sorted(fams, key=lambda s: int(s[1:]))]
 
 
 # ---------------------------------------------------------------- level 1: freeze and project
@@ -140,3 +166,36 @@ def unknown_shares(pf_fit: np.ndarray, subs_train: list[np.ndarray]) -> tuple[np
     """D25 tier 3 (under 100 minutes), at both levels: family shares = mean P(f) over fitted player-seasons;
     sub-role shares = mean P(s | f) over that family's training player-seasons."""
     return pf_fit.mean(0), [s.mean(0) for s in subs_train]
+
+
+# ---------------------------------------------------------------- slicing test (D30, METHODS section 7)
+
+def centroid_spread(means: np.ndarray, weights: np.ndarray, axes: np.ndarray) -> dict:
+    """How cluster centers spread, in the standardized space they were fitted in.
+    B = sum_c w_c (mu_c - mu_bar)(mu_c - mu_bar)', the weighted between-centroid covariance.
+    share_axis[j] = a_j' B a_j / trace(B) for each unit row a_j of `axes` (the within-family PCs).
+    line_share = largest eigenvalue of B / trace(B): 1.0 means every centroid sits on one straight line (always
+    true at k = 2). line_angle_pc1 = angle in degrees between that line and PC1 (0 = parallel)."""
+    w = np.asarray(weights, float) / np.sum(weights)
+    mu = np.asarray(means, float)
+    dev = mu - w @ mu
+    B = (dev * w[:, None]).T @ dev
+    tr = np.trace(B)
+    vals, vecs = np.linalg.eigh(B)
+    top = vecs[:, -1]
+    cos = abs(float(top @ axes[0]) / np.linalg.norm(axes[0]))
+    return {"share_axis": np.array([a @ B @ a / tr for a in axes]), "line_share": float(vals[-1] / tr),
+            "line_angle_pc1": float(np.degrees(np.arccos(min(cos, 1.0))))}
+
+
+def gmm_1d(x: np.ndarray, ks=(1, 2), seed: int = 0) -> dict[int, dict]:
+    """1-D Gaussian mixture per k: BIC (lower is better) and the components (weights, means, SDs; sorted by mean)."""
+    from sklearn.mixture import GaussianMixture
+    x = np.asarray(x, float).reshape(-1, 1)
+    out = {}
+    for k in ks:
+        g = GaussianMixture(k, n_init=10, random_state=seed).fit(x)
+        o = np.argsort(g.means_.ravel())
+        out[k] = {"bic": float(g.bic(x)), "weights": g.weights_[o], "means": g.means_.ravel()[o],
+                  "sds": np.sqrt(g.covariances_.ravel()[o])}
+    return out

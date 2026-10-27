@@ -363,7 +363,7 @@ and weight, and recomputes the centers using these probabilities.
 
 ## 6. Two-level archetypes: families and sub-roles (Phase 2) — `src/pacersml/archetypes/twolevel.py`, `scripts/archetypes_families.py`
 
-**Status:** level 1 frozen (D27). Level 2 swept, sub-role k not chosen.
+**Status:** level 1 frozen (D27); families named (D29). Level 2 swept, sub-role k not chosen; D31 feature drops and the D30 slicing test are in section 7.
 
 **What it does.** Two layers of the same kind of model (section 5).
 1. **Families (level 1).** The full-covariance k = 3 mixture from section 5, frozen. Every player-season gets a
@@ -430,3 +430,58 @@ as H2 rolling windows. Stints, `player_game.parquet`, per-100, RAPM and lineup o
 out. For Group C quarantines (a lineup check failed), that game's possessions are NBA's per-player count from
 `boxscoreadvancedv3`, because our stint count may be wrong for the players involved. NBA counts about 2% more
 possessions than we do (D23), roughly 0.2% within a 10-game window.
+
+## 7. Slicing test: discrete sub-roles or a continuum inside a family (Phase 2) — `scripts/archetypes_slicing.py`
+
+**Status:** diagnostics run (D30), choice pending. Level 2 uses the D31 features (charges drawn dropped
+everywhere; pull-up 3 rate also dropped in F3). Family names are D29's (sub-roles unnamed).
+
+**What it does.** A clustering model always returns clusters, even when the data has no groups. If a family's
+players form one long cloud (for example, bigs running smoothly from "all rim" to "stretch"), a model that can't
+tilt its clusters (diag) will cut the cloud into pieces along its long direction. Those pieces can be stable
+(bootstrap gives the same cut every time) without being separate roles. The test asks which of the two it is:
+1. **PCA inside the family.** Find the directions along which the family's players vary most (PC1, PC2, ...),
+   using the family's own standardization. The loadings show which features move together along each one.
+2. **Where the cluster centers sit.** Take the diag model's cluster centers at the candidate k and k ± 1. Measure
+   how much of the spread between centers lies along PC1 ("along PC1"), and how close the centers are to one
+   straight line ("one-line share": 1.00 = a perfect line; always 1.00 with 2 clusters).
+3. **Are there humps?** Plot the PC1 and PC2 scores. Fit one Gaussian and a mix of two, and compare BIC. Two clear
+   humps on a PC are evidence of separate groups; one hump is evidence of a continuum.
+
+**What each outcome would mean.**
+- **Centers lined up along PC1 and one hump per PC** → the clusters are slices of one continuum. Option (d):
+  describe players by family probability plus a score on 1–2 within-family axes (a frozen PCA).
+- **Centers spread in different directions and at least one PC clearly two-humped** → discrete sub-roles are
+  supported. Option (b): diag sub-roles.
+- **Neither clearly** → option (a), three families only, is the fallback.
+
+**Toy example.** One family, two features (rim share z, 3PA share z), equal-weight diag clusters. PC1 here is the
+rim-vs-3PA diagonal; BIC differences are illustrative.
+
+| case | centers (rim z, 3PA z) | along PC1 | one-line share | PC1 BIC(2) − BIC(1) | reading |
+|---|---|---|---|---|---|
+| continuum | (−1.5, +1.5), (−0.5, +0.5), (+0.5, −0.5), (+1.5, −1.5) | 100% | 1.00 | +12 (one hump) | (d) pattern |
+| groups | (−1, +1), (+1, −1), (+1, +1), (−1, −1) | 50% | 0.50 | −25 (two humps) | (b) pattern |
+| mixed | (−1.5, +1.5), (0, 0), (+1.5, −1.5), (+1.5, +1.5) | 73% | 0.73 | +4 | unclear |
+| 2 clusters | (−1, +1), (+1, −1) | 100% | 1.00 (always) | −8 | line share says nothing at k = 2 |
+| real k = 2 groups, skewed | (−1, 0), (+2, 0) | 100% | 1.00 | −10, skew +1.0 | two humps or one lopsided hump: check the histogram |
+
+**What could make it wrong.**
+- **A lopsided single hump** is often fitted better by two Gaussians, so BIC(2) < BIC(1) does not by itself
+  prove two groups. The report shows skewness and the histogram for this reason.
+- **Groups can hide in later PCs.** Groups that differ only on PC3+ won't show in the PC1/PC2 histograms; the
+  "along PCj" columns show whether the centers use PC3–PC5.
+- **k = 2 always gives a straight line**, so the one-line share only carries information at k ≥ 3.
+- **Small samples.** F3 has 152 rows; a histogram of 152 points can show bumps by chance, and the 1-D BIC
+  difference is small next to that noise.
+- **PCA depends on the feature set and scaling.** Dropping features (D31) or standardizing differently changes
+  the axes; the PCA would need to be frozen with the scaler if option (d) is chosen.
+- **Unimodal is not the same as uniform.** A continuum can still have dense and sparse regions that matter for
+  RAPM; option (d) keeps that information as a score instead of a cut.
+
+**Questions you should be able to answer.**
+1. Why can diag clusters be stable across bootstraps and still be slices of one continuum?
+2. At k = 2 the one-line share is 1.00. Why does that tell you nothing, and which number would you look at
+   instead?
+3. PC2 has BIC(2) − BIC(1) = −10 and skewness +0.95. What two explanations fit those numbers, and what in the
+   histogram would separate them?

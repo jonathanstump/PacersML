@@ -1,6 +1,18 @@
 # Level 1: families (full covariance, k = 3, frozen)
 
-750 fitted player-seasons (500+ regular-season minutes, 2024-25 + 2025-26). Families F1-F3 are C1-C3 of the k = 3 packet (numbered by size). No names.
+750 fitted player-seasons (500+ regular-season minutes, 2024-25 + 2025-26). Families F1-F3 are C1-C3 of the k = 3 packet (numbered by size).
+
+## Family names (D29, names file version 1, keyed to model hash fcc589f8fee7)
+
+Named by Jonathan from the blind profiles before viewing players.
+
+| family | name | reason |
+|---|---|---|
+| F1 | On-ball Shot Creators | Create their own offense: fewer made shots assisted (54.5% vs 67.1% league), more assists (7.1 vs 5.2 per 100), higher usage (26.3 vs 22.0 shot attempts + TOV per 100), more pull-up/step-back 3s (15.3% vs 9.3% of FGA) and more drives (26.1% vs 20.6% of FGA). |
+| F2 | Off-ball Spot Ups | Finish plays others create: more made shots assisted (77.1% vs 67.1%), more corner 3s (19.9% vs 12.4% of FGA), lower usage (18.5 vs 22.0), fewer assists (3.9 vs 5.2), fewer fouls drawn (2.3 vs 3.4 per 100) and fewer drives (18.2% vs 20.6%). |
+| F3 | Bigs | Play near the basket on both ends: OREB% 9.4% vs 4.6%, DREB% 19.3% vs 13.1%, blocks 2.1 vs 1.0 per 100, about half of FGA at the rim (51.5% vs 30.6%), few above-break 3s (13.2% vs 29.6%) and almost no pull-up 3s (1.1% vs 9.3%). |
+
+Crosstab check: Family x NBA listed position: F1 64% G; F2 40% G, 42% F; F3 43% C, 20% F-C, 20% F.
 
 Frozen model: `models/archetypes/level1_full_k3.pkl` (+ `.json` with every parameter); hashes in `data/manifest.json` under `archetype_model.level1`.
 
@@ -10,17 +22,17 @@ Counts (NBA playerindex position, current listing):
 
 | family | G | G-F | F-G | F | F-C | C-F | C | total |
 |---|---|---|---|---|---|---|---|---|
-| F1 | 195 | 30 | 12 | 57 | 6 | 2 | 4 | 306 |
-| F2 | 115 | 27 | 9 | 122 | 11 | 2 | 5 | 291 |
-| F3 | 3 | 0 | 0 | 31 | 31 | 22 | 66 | 153 |
+| F1 On-ball Shot Creators | 195 | 30 | 12 | 57 | 6 | 2 | 4 | 306 |
+| F2 Off-ball Spot Ups | 115 | 27 | 9 | 122 | 11 | 2 | 5 | 291 |
+| F3 Bigs | 3 | 0 | 0 | 31 | 31 | 22 | 66 | 153 |
 
 Row shares (share of the family in each listed position):
 
 | family | G | G-F | F-G | F | F-C | C-F | C |
 |---|---|---|---|---|---|---|---|
-| F1 | 64% | 10% | 4% | 19% | 2% | 1% | 1% |
-| F2 | 40% | 9% | 3% | 42% | 4% | 1% | 2% |
-| F3 | 2% | 0% | 0% | 20% | 20% | 14% | 43% |
+| F1 On-ball Shot Creators | 64% | 10% | 4% | 19% | 2% | 1% | 1% |
+| F2 Off-ball Spot Ups | 40% | 9% | 3% | 42% | 4% | 1% | 2% |
+| F3 Bigs | 2% | 0% | 0% | 20% | 20% | 14% | 43% |
 
 Chart: [position_crosstab.png](position_crosstab.png)
 
@@ -30,53 +42,53 @@ Chart: [top_prob_hist.png](top_prob_hist.png)
 
 | family | members | median top prob | under 0.9 | under 0.7 | under 0.6 |
 |---|---|---|---|---|---|
-| F1 | 306 | 1.000 | 27 | 7 | 3 |
-| F2 | 291 | 0.996 | 59 | 25 | 10 |
-| F3 | 153 | 1.000 | 11 | 3 | 1 |
+| F1 On-ball Shot Creators | 306 | 1.000 | 27 | 7 | 3 |
+| F2 Off-ball Spot Ups | 291 | 0.996 | 59 | 25 | 10 |
+| F3 Bigs | 153 | 1.000 | 11 | 3 | 1 |
 
 ## Straddlers: every player-season with top family probability under 0.7 (35)
 
 | player-season | minutes | position | top family | prob | second | prob |
 |---|---|---|---|---|---|---|
-| Brice Sensabaugh (UTA, 2025-26) | 1762 | F | F2 | 0.522 | F1 | 0.478 |
-| Mohamed Diawara (NYK, 2025-26) | 634 | F | F2 | 0.523 | F1 | 0.477 |
-| Will Riley (WAS, 2025-26) | 1622 | F | F2 | 0.523 | F1 | 0.477 |
-| Ricky Council IV (PHI, 2024-25) | 1213 | G | F1 | 0.532 | F2 | 0.468 |
-| Jase Richardson (ORL, 2025-26) | 582 | G | F1 | 0.541 | F2 | 0.459 |
-| Kon Knueppel (CHA, 2025-26) | 2482 | G-F | F2 | 0.543 | F1 | 0.457 |
-| Aaron Holiday (HOU, 2024-25) | 766 | G | F2 | 0.556 | F1 | 0.444 |
-| Christian Braun (DEN, 2024-25) | 2569 | G | F3 | 0.560 | F2 | 0.440 |
-| Tidjane Salaün (CHA, 2025-26) | 558 | F | F2 | 0.560 | F3 | 0.420 |
-| Jett Howard (ORL, 2024-25) | 687 | G | F2 | 0.572 | F1 | 0.428 |
-| Pelle Larsson (MIA, 2025-26) | 1849 | G | F2 | 0.576 | F1 | 0.424 |
-| Amir Coffey (LAC, 2024-25) | 1748 | G-F | F2 | 0.580 | F1 | 0.420 |
-| Jabari Smith Jr. (HOU, 2025-26) | 2705 | F | F1 | 0.584 | F2 | 0.415 |
-| Ayo Dosunmu (CHI, 2024-25) | 1359 | G | F2 | 0.596 | F1 | 0.404 |
-| Bogdan Bogdanović (LAC/ATL, 2024-25) | 1348 | G | F1 | 0.608 | F2 | 0.392 |
-| Jake LaRavia (MEM/SAC, 2024-25) | 1326 | F | F2 | 0.610 | F1 | 0.390 |
-| Luke Kennard (ATL/LAL, 2025-26) | 1681 | G | F2 | 0.613 | F1 | 0.387 |
-| Keon Johnson (BKN, 2024-25) | 1893 | G | F2 | 0.613 | F1 | 0.387 |
-| Gradey Dick (TOR, 2025-26) | 1052 | G-F | F1 | 0.615 | F2 | 0.385 |
-| Donte DiVincenzo (MIN, 2024-25) | 1574 | G | F1 | 0.623 | F2 | 0.377 |
-| Malik Beasley (DET, 2024-25) | 2175 | G | F2 | 0.625 | F1 | 0.375 |
-| Jerami Grant (POR, 2024-25) | 1490 | F | F3 | 0.636 | F2 | 0.354 |
-| Cody Williams (UTA, 2025-26) | 1631 | F | F2 | 0.644 | F1 | 0.348 |
-| Jaden Ivey (DET/CHI, 2025-26) | 657 | G | F2 | 0.649 | F1 | 0.351 |
-| Anthony Black (ORL, 2025-26) | 1881 | G | F2 | 0.650 | F1 | 0.350 |
-| Jonathan Mogbo (TOR, 2024-25) | 1286 | F | F3 | 0.661 | F2 | 0.339 |
-| Caris LeVert (CLE/ATL, 2024-25) | 1596 | G | F2 | 0.661 | F1 | 0.339 |
-| Bilal Coulibaly (WAS, 2025-26) | 1468 | G | F2 | 0.662 | F1 | 0.338 |
-| Jalen Wilson (BKN, 2025-26) | 859 | F | F2 | 0.663 | F3 | 0.324 |
-| Kyle Kuzma (MIL, 2025-26) | 1771 | F | F2 | 0.664 | F1 | 0.335 |
-| Bruce Brown (NOP/TOR, 2024-25) | 922 | G-F | F2 | 0.675 | F1 | 0.265 |
-| Cedric Coward (MEM, 2025-26) | 1598 | G | F2 | 0.677 | F1 | 0.323 |
-| Miles Bridges (CHA, 2024-25) | 1995 | F | F1 | 0.683 | F2 | 0.317 |
-| Jordan Miller (LAC, 2025-26) | 1314 | G | F2 | 0.687 | F1 | 0.313 |
-| Bilal Coulibaly (WAS, 2024-25) | 1916 | G | F2 | 0.694 | F1 | 0.306 |
+| Brice Sensabaugh (UTA, 2025-26) | 1762 | F | F2 Off-ball Spot Ups | 0.522 | F1 On-ball Shot Creators | 0.478 |
+| Mohamed Diawara (NYK, 2025-26) | 634 | F | F2 Off-ball Spot Ups | 0.523 | F1 On-ball Shot Creators | 0.477 |
+| Will Riley (WAS, 2025-26) | 1622 | F | F2 Off-ball Spot Ups | 0.523 | F1 On-ball Shot Creators | 0.477 |
+| Ricky Council IV (PHI, 2024-25) | 1213 | G | F1 On-ball Shot Creators | 0.532 | F2 Off-ball Spot Ups | 0.468 |
+| Jase Richardson (ORL, 2025-26) | 582 | G | F1 On-ball Shot Creators | 0.541 | F2 Off-ball Spot Ups | 0.459 |
+| Kon Knueppel (CHA, 2025-26) | 2482 | G-F | F2 Off-ball Spot Ups | 0.543 | F1 On-ball Shot Creators | 0.457 |
+| Aaron Holiday (HOU, 2024-25) | 766 | G | F2 Off-ball Spot Ups | 0.556 | F1 On-ball Shot Creators | 0.444 |
+| Christian Braun (DEN, 2024-25) | 2569 | G | F3 Bigs | 0.560 | F2 Off-ball Spot Ups | 0.440 |
+| Tidjane Salaün (CHA, 2025-26) | 558 | F | F2 Off-ball Spot Ups | 0.560 | F3 Bigs | 0.420 |
+| Jett Howard (ORL, 2024-25) | 687 | G | F2 Off-ball Spot Ups | 0.572 | F1 On-ball Shot Creators | 0.428 |
+| Pelle Larsson (MIA, 2025-26) | 1849 | G | F2 Off-ball Spot Ups | 0.576 | F1 On-ball Shot Creators | 0.424 |
+| Amir Coffey (LAC, 2024-25) | 1748 | G-F | F2 Off-ball Spot Ups | 0.580 | F1 On-ball Shot Creators | 0.420 |
+| Jabari Smith Jr. (HOU, 2025-26) | 2705 | F | F1 On-ball Shot Creators | 0.584 | F2 Off-ball Spot Ups | 0.415 |
+| Ayo Dosunmu (CHI, 2024-25) | 1359 | G | F2 Off-ball Spot Ups | 0.596 | F1 On-ball Shot Creators | 0.404 |
+| Bogdan Bogdanović (LAC/ATL, 2024-25) | 1348 | G | F1 On-ball Shot Creators | 0.608 | F2 Off-ball Spot Ups | 0.392 |
+| Jake LaRavia (MEM/SAC, 2024-25) | 1326 | F | F2 Off-ball Spot Ups | 0.610 | F1 On-ball Shot Creators | 0.390 |
+| Luke Kennard (ATL/LAL, 2025-26) | 1681 | G | F2 Off-ball Spot Ups | 0.613 | F1 On-ball Shot Creators | 0.387 |
+| Keon Johnson (BKN, 2024-25) | 1893 | G | F2 Off-ball Spot Ups | 0.613 | F1 On-ball Shot Creators | 0.387 |
+| Gradey Dick (TOR, 2025-26) | 1052 | G-F | F1 On-ball Shot Creators | 0.615 | F2 Off-ball Spot Ups | 0.385 |
+| Donte DiVincenzo (MIN, 2024-25) | 1574 | G | F1 On-ball Shot Creators | 0.623 | F2 Off-ball Spot Ups | 0.377 |
+| Malik Beasley (DET, 2024-25) | 2175 | G | F2 Off-ball Spot Ups | 0.625 | F1 On-ball Shot Creators | 0.375 |
+| Jerami Grant (POR, 2024-25) | 1490 | F | F3 Bigs | 0.636 | F2 Off-ball Spot Ups | 0.354 |
+| Cody Williams (UTA, 2025-26) | 1631 | F | F2 Off-ball Spot Ups | 0.644 | F1 On-ball Shot Creators | 0.348 |
+| Jaden Ivey (DET/CHI, 2025-26) | 657 | G | F2 Off-ball Spot Ups | 0.649 | F1 On-ball Shot Creators | 0.351 |
+| Anthony Black (ORL, 2025-26) | 1881 | G | F2 Off-ball Spot Ups | 0.650 | F1 On-ball Shot Creators | 0.350 |
+| Jonathan Mogbo (TOR, 2024-25) | 1286 | F | F3 Bigs | 0.661 | F2 Off-ball Spot Ups | 0.339 |
+| Caris LeVert (CLE/ATL, 2024-25) | 1596 | G | F2 Off-ball Spot Ups | 0.661 | F1 On-ball Shot Creators | 0.339 |
+| Bilal Coulibaly (WAS, 2025-26) | 1468 | G | F2 Off-ball Spot Ups | 0.662 | F1 On-ball Shot Creators | 0.338 |
+| Jalen Wilson (BKN, 2025-26) | 859 | F | F2 Off-ball Spot Ups | 0.663 | F3 Bigs | 0.324 |
+| Kyle Kuzma (MIL, 2025-26) | 1771 | F | F2 Off-ball Spot Ups | 0.664 | F1 On-ball Shot Creators | 0.335 |
+| Bruce Brown (NOP/TOR, 2024-25) | 922 | G-F | F2 Off-ball Spot Ups | 0.675 | F1 On-ball Shot Creators | 0.265 |
+| Cedric Coward (MEM, 2025-26) | 1598 | G | F2 Off-ball Spot Ups | 0.677 | F1 On-ball Shot Creators | 0.323 |
+| Miles Bridges (CHA, 2024-25) | 1995 | F | F1 On-ball Shot Creators | 0.683 | F2 Off-ball Spot Ups | 0.317 |
+| Jordan Miller (LAC, 2025-26) | 1314 | G | F2 Off-ball Spot Ups | 0.687 | F1 On-ball Shot Creators | 0.313 |
+| Bilal Coulibaly (WAS, 2024-25) | 1916 | G | F2 Off-ball Spot Ups | 0.694 | F1 On-ball Shot Creators | 0.306 |
 
 ## Family probabilities for the hypothesis-check players
 
-| player-season | minutes | tier | P(F1) | P(F2) | P(F3) |
+| player-season | minutes | tier | P(F1 On-ball Shot Creators) | P(F2 Off-ball Spot Ups) | P(F3 Bigs) |
 |---|---|---|---|---|---|
 | Andrew Nembhard (IND, 2024-25) | 1839 | fit | 1.000 | 0.000 | 0.000 |
 | Andrew Nembhard (IND, 2025-26) | 1785 | fit | 1.000 | 0.000 | 0.000 |

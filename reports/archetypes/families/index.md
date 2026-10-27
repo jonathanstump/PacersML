@@ -1,6 +1,8 @@
 # Two-level archetypes (D27)
 
-Level 1 frozen (full covariance, k = 3). Level 2 swept inside each family; nothing picked, no names.
+Level 1 frozen (full covariance, k = 3); family names D29: F1 On-ball Shot Creators; F2 Off-ball Spot Ups; F3 Bigs. Level 2 swept inside each family; nothing picked, sub-roles unnamed.
+
+**D30 slicing diagnostics (D31 feature drops applied): [slicing/index.md](slicing/index.md).** The sweeps and packets below are the D27 run with all 17 features, before the D31 drops.
 
 ## Open first
 

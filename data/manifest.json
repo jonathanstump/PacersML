@@ -27,6 +27,12 @@
       "frozen_utc": "2026-10-26T13:29:04+00:00",
       "json": "models/archetypes/level1_full_k3.json",
       "k": 3,
+      "names": {
+        "decision": "D29",
+        "file_sha256": "7f1482928d7c801ccf261cb73b7dc394f0f9339b65e8d3a417e9fb44e9b9d59e",
+        "path": "models/archetypes/level1_full_k3_names.json",
+        "version": 1
+      },
       "param_sha256": "fcc589f8fee749e70464503a1c0cd2d26b56593d8ac8acb3735f4c1474135891",
       "path": "models/archetypes/level1_full_k3.pkl",
       "training_seasons": [

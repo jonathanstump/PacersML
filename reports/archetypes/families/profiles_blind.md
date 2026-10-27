@@ -1,6 +1,6 @@
 # Blind family profiles (level 1: full covariance, k = 3, frozen)
 
-No player names in this file. Families are numbered by size (F1 = largest); F1-F3 are C1-C3 of reports/archetypes/k3/.
+No player names in this file. Families are numbered by size (F1 = largest); F1-F3 are C1-C3 of reports/archetypes/k3/. Family names: D29, `models/archetypes/level1_full_k3_names.json` (version 1).
 
 - Fitted player-seasons: 750 (500+ regular-season minutes, 2024-25 and 2025-26).
 - Members = player-seasons whose most likely archetype is this one (hard assignment).
@@ -8,7 +8,7 @@ No player names in this file. Families are numbered by size (F1 = largest); F1-F
 - Share of league minutes: members' regular-season minutes ÷ all players' regular-season minutes in the two seasons (players under 500 minutes are in no cluster).
 - Shot-location mix: all members' FGA pooled.
 
-## F1
+## F1 On-ball Shot Creators
 
 **Size:** 306 player-seasons (40.8% of fitted) · **share of league minutes:** 41.4% · median membership probability 1.00, 1% of members under 0.6
 
@@ -30,7 +30,7 @@ No player names in this file. Families are numbered by size (F1 = largest); F1-F
 | cluster | 24% | 20% | 15% | 8% | 34% |
 | league | 29% | 19% | 11% | 11% | 31% |
 
-## F2
+## F2 Off-ball Spot Ups
 
 **Size:** 291 player-seasons (38.8% of fitted) · **share of league minutes:** 34.4% · median membership probability 1.00, 3% of members under 0.6
 
@@ -52,7 +52,7 @@ No player names in this file. Families are numbered by size (F1 = largest); F1-F
 | cluster | 27% | 14% | 6% | 18% | 34% |
 | league | 29% | 19% | 11% | 11% | 31% |
 
-## F3
+## F3 Bigs
 
 **Size:** 153 player-seasons (20.4% of fitted) · **share of league minutes:** 17.6% · median membership probability 1.00, 1% of members under 0.6
 

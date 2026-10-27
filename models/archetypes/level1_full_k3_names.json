@@ -1,0 +1,23 @@
+{
+ "version": 1,
+ "decision": "D29",
+ "named_utc": "2026-10-27",
+ "model_path": "models/archetypes/level1_full_k3.pkl",
+ "model_param_sha256": "fcc589f8fee749e70464503a1c0cd2d26b56593d8ac8acb3735f4c1474135891",
+ "note": "Named from blind profiles before viewing players. Keys are frozen family ids (F1 = C1 of reports/archetypes/k3/). League = mean over the 750 fitted player-seasons.",
+ "families": {
+  "F1": {
+   "name": "On-ball Shot Creators",
+   "reason": "Create their own offense: fewer made shots assisted (54.5% vs 67.1% league), more assists (7.1 vs 5.2 per 100), higher usage (26.3 vs 22.0 shot attempts + TOV per 100), more pull-up/step-back 3s (15.3% vs 9.3% of FGA) and more drives (26.1% vs 20.6% of FGA)."
+  },
+  "F2": {
+   "name": "Off-ball Spot Ups",
+   "reason": "Finish plays others create: more made shots assisted (77.1% vs 67.1%), more corner 3s (19.9% vs 12.4% of FGA), lower usage (18.5 vs 22.0), fewer assists (3.9 vs 5.2), fewer fouls drawn (2.3 vs 3.4 per 100) and fewer drives (18.2% vs 20.6%)."
+  },
+  "F3": {
+   "name": "Bigs",
+   "reason": "Play near the basket on both ends: OREB% 9.4% vs 4.6%, DREB% 19.3% vs 13.1%, blocks 2.1 vs 1.0 per 100, about half of FGA at the rim (51.5% vs 30.6%), few above-break 3s (13.2% vs 29.6%) and almost no pull-up 3s (1.1% vs 9.3%)."
+  }
+ },
+ "crosstab_check": "Family x NBA listed position: F1 64% G; F2 40% G, 42% F; F3 43% C, 20% F-C, 20% F."
+}

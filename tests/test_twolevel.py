@@ -65,3 +65,27 @@ def test_tracking_keeps_quarantined_and_uses_nba_poss_for_group_c():
     assert g2.poss_off == 60 and g2.poss_source == "stints"
     t2 = tracking_player_game(pg, q, lambda gid: None)
     assert np.isnan(t2[t2.game_id == "g3"].poss_off.iloc[0])
+
+
+def test_l2_features_d31():
+    cols = ["rim_share", "pullup3_rate", "charges_drawn_per100", "ast_per100"]
+    assert tl.l2_features(0, cols) == ["rim_share", "pullup3_rate", "ast_per100"]
+    assert tl.l2_features(2, cols) == ["rim_share", "ast_per100"]
+
+
+def test_centroid_spread_line_and_axes():
+    axes = np.eye(3)
+    # three centers on the x axis: everything along PC1, one straight line, angle 0
+    s = tl.centroid_spread(np.array([[-1.0, 0, 0], [0, 0, 0], [2.0, 0, 0]]), np.array([1, 1, 1]), axes)
+    assert np.allclose(s["share_axis"], [1, 0, 0]) and np.isclose(s["line_share"], 1) and s["line_angle_pc1"] < 1e-6
+    # an equilateral-ish spread in the x-y plane: half along each axis, not a line
+    s = tl.centroid_spread(np.array([[1.0, 0, 0], [-1.0, 0, 0], [0, 1.0, 0], [0, -1.0, 0]]), np.ones(4), axes)
+    assert np.allclose(s["share_axis"], [0.5, 0.5, 0]) and np.isclose(s["line_share"], 0.5)
+
+
+def test_gmm_1d_prefers_two_for_bimodal():
+    rng = np.random.default_rng(0)
+    x = np.r_[rng.normal(-4, 1, 300), rng.normal(4, 1, 300)]
+    y = rng.normal(0, 1, 600)
+    assert tl.gmm_1d(x)[2]["bic"] < tl.gmm_1d(x)[1]["bic"]
+    assert tl.gmm_1d(y)[2]["bic"] > tl.gmm_1d(y)[1]["bic"]

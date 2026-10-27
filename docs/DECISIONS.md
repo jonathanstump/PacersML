@@ -834,3 +834,78 @@ rows get NBA's per-player possessions from `boxscoreadvancedv3` (cached raw as `
 `poss_off` and `poss_def` (`poss_source = nba_box_advanced`); if NBA doesn't answer, possessions are left empty
 (`unavailable`). `player_game.parquet`, stints and per-100 are unchanged (quarantined games stay out). As of
 2026-10-26: 3 quarantined 2026-27 games, all Group B, none Pacers, so no NBA counts are used yet.
+
+---
+
+## D29 — Level-1 family names (2026-10-27, Phase 2)
+
+Jonathan: family names for the frozen level-1 model (full, k = 3), stored as a versioned names file next to the
+model artifact, keyed to the model hash, and used in all reports, charts and the site from now on. Named from the
+blind profiles before viewing players. Reasons (league = mean over the 750 fitted player-seasons):
+
+- **F1 (C1) → "On-ball Shot Creators".** Create their own offense: fewer made shots assisted (54.5% vs 67.1%),
+  more assists (7.1 vs 5.2 per 100), higher usage (26.3 vs 22.0 shot attempts + TOV per 100), more
+  pull-up/step-back 3s (15.3% vs 9.3% of FGA) and more drives (26.1% vs 20.6% of FGA).
+- **F2 (C2) → "Off-ball Spot Ups".** Finish plays others create: more made shots assisted (77.1% vs 67.1%), more
+  corner 3s (19.9% vs 12.4% of FGA), lower usage (18.5 vs 22.0), fewer assists (3.9 vs 5.2), fewer fouls drawn
+  (2.3 vs 3.4 per 100) and fewer drives (18.2% vs 20.6%).
+- **F3 (C3) → "Bigs".** Play near the basket on both ends: OREB% 9.4% vs 4.6%, DREB% 19.3% vs 13.1%, blocks 2.1
+  vs 1.0 per 100, about half of FGA at the rim (51.5% vs 30.6%), few above-break 3s (13.2% vs 29.6%) and almost no
+  pull-up 3s (1.1% vs 9.3%).
+
+Crosstab check (family × NBA listed position): F1 64% G; F2 40% G, 42% F; F3 43% C, 20% F-C, 20% F.
+
+Implementation: `models/archetypes/level1_full_k3_names.json` (version 1, `model_param_sha256` = the frozen
+model's parameter hash); registered in `data/manifest.json` → `archetype_model.level1.names` with its file hash.
+`twolevel.load_names` stops if the names file's hash key doesn't match the loaded model. Family reports
+(`reports/archetypes/families/families.md`, `profiles_blind.md`, crosstab and probability charts, hypothesis check)
+and the D30 diagnostics use the names. Sub-roles stay unnamed. The D26 packet in `reports/archetypes/k3/` is left
+as written (C1–C3).
+
+---
+
+## D30 — Level-2 structure: discrete sub-roles or continuous axes (2026-10-27, Phase 2, **pending Jonathan's choice**)
+
+Jonathan's call on D27's open question: not (c). "The parameter limit was meant for models that split a family's
+rows across several clusters. Tied k=1 estimates one covariance from all of a family's rows (about 9 rows per
+feature even in F3), so the limit doesn't apply to it." Between (a) and (b): tied k ≥ 2 is unstable and tied k = 1
+beats every stable diag split on BIC by a wide margin, which can mean within-family variation is a continuum of
+correlated features that diag cuts into stable but not real slices. Diagnostics first (D31 drops applied); nothing
+named, chosen or packaged. Options he will choose between:
+
+- **(b)** discrete sub-roles from diag, if centroids spread in different directions and at least one PC is clearly
+  bimodal;
+- **(d)** continuous within-family axes, if centroids line up along PC1 and the PCs are unimodal: family
+  probabilities plus scores on 1–2 named within-family axes from a frozen PCA; RAPM interactions use family weight
+  × axis score;
+- **(a)** three families only, as the fallback.
+
+Diagnostics (`scripts/archetypes_slicing.py`, METHODS section 7, `reports/archetypes/families/slicing/`), per
+family on its training rows with within-family standardization: PCA (variance PCs 1–5, top 5 loadings PCs 1–3,
+PC1 × PC2 scatter); diag sweep k 1–6 with D31 features (tied k = 1 as reference); for the diag candidate k ± 1, the
+share of between-centroid variance along each PC and the centroids' one-line share; PC1/PC2 histograms with 1 vs 2
+component 1-D Gaussian BIC.
+
+**Results (2026-10-27):**
+
+| family | rows / features | PC1 / PC2 variance | diag candidate (ARI, min kept) | BIC vs tied k = 1 | along PC1 (k−1 / k / k+1) | one-line share (k−1 / k / k+1) | PC1 / PC2 BIC(2)−BIC(1) | PC1 / PC2 skew |
+|---|---|---|---|---|---|---|---|---|
+| F1 | 303 / 16 | 31.0% / 17.9% | k = 2 (0.72, 89%) | +2,246 | k2 96% / k3 66% | 1.00 / 0.67 | +18.1 / +16.4 | +0.19 / +0.03 |
+| F2 | 281 / 16 | 33.5% / 17.7% | k = 4 (0.67, 77%) | +1,870 | 75% / 74% / 68% | 0.76 / 0.74 / 0.69 | +18.2 / +15.2 | +0.09 / −0.12 |
+| F3 | 152 / 15 | 24.8% / 21.1% | k = 3 (0.64, 70%) | +463 | 86% / 55% / 54% | 1.00 / 0.61 / 0.58 | +2.7 / −10.3 | −0.23 / +0.95 |
+
+With the D31 features, F1's diag candidate moved from k = 3 (D27) to k = 2 (diag k = 3 now has median ARI 0.59).
+At k = 2 the one-line share is 1.00 by construction. PC1 + PC2 hold 90–99% of between-centroid variance at every
+reported k. The D27 packets (all 17 features) are left in place and are superseded for level 2.
+
+---
+
+## D31 — Level-2 feature drops (2026-10-27, Phase 2)
+
+Jonathan: "Charges drawn per 100: drop from Level 2 in all three families. It's a rare-event rate, very skewed
+with many zeros, noisy within one season, and not part of any hypothesis. Level 1 is frozen and keeps it.
+Pull-up/step-back 3PA per FGA: drop in F3 only (37% zeros). Above-break 3 share and 3PA rate already carry bigs'
+range. Keep it in F1 and F2."
+
+Implementation: `twolevel.L2_DROP_ALL`, `L2_DROP_FAMILY`, `l2_features(f, cols)`. Level 2 now uses 16 features in
+F1 and F2 and 15 in F3; the level-1 model and its 17 features are unchanged.
